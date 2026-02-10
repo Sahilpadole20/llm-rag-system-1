@@ -1,0 +1,116 @@
+================================================================================
+RAG SYSTEM - 10 SAMPLE SCENARIOS - PAPER ALGORITHM REPORT
+================================================================================
+
+ALGORITHM OVERVIEW
+----------------------------------------
+Paper: Adaptive Task Scheduling in Edge-Fog-Cloud
+       with Network Failure Resilience
+
+Method: ML + Threshold (Gradient Boosting)
+  1. Gradient Boosting predicts deployment layer
+  2. Threshold rules validate/override prediction
+  3. Combines ML learning with domain expertise
+
+TEST OVERVIEW
+----------------------------------------
+Timestamp: 20260211_044120
+Total Scenarios: 10
+Correct Predictions: 9
+Accuracy: 90.0%
+Decision Method: ML + Threshold (Paper Algorithm)
+
+DEPLOYMENT DISTRIBUTION
+----------------------------------------
+Cloud     :    10 scenarios (100.0%)
+
+NETWORK METRICS
+----------------------------------------
+Latency (ms): 7.18 - 200.89
+Datarate (Mbps): 20.60 - 29.30
+
+================================================================================
+DETAILED RESULTS
+================================================================================
+
+Scenario 1: [CORRECT]
+  Metrics: Latency=199.72ms, DataRate=25.40Mbps
+  Signal: SINR=9.56dB, RSRP=-118.44dBm
+  Resources: CPU=25%, Memory=909MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 2: [CORRECT]
+  Metrics: Latency=200.23ms, DataRate=20.60Mbps
+  Signal: SINR=9.73dB, RSRP=-119.19dBm
+  Resources: CPU=20%, Memory=844MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 3: [CORRECT]
+  Metrics: Latency=200.52ms, DataRate=27.80Mbps
+  Signal: SINR=9.67dB, RSRP=-117.43dBm
+  Resources: CPU=27%, Memory=863MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 4: [CORRECT]
+  Metrics: Latency=198.30ms, DataRate=29.30Mbps
+  Signal: SINR=9.51dB, RSRP=-119.45dBm
+  Resources: CPU=29%, Memory=885MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 5: [CORRECT]
+  Metrics: Latency=198.86ms, DataRate=22.70Mbps
+  Signal: SINR=9.74dB, RSRP=-118.58dBm
+  Resources: CPU=22%, Memory=838MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 6: [CORRECT]
+  Metrics: Latency=200.62ms, DataRate=28.20Mbps
+  Signal: SINR=10.30dB, RSRP=-118.68dBm
+  Resources: CPU=28%, Memory=896MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 7: [CORRECT]
+  Metrics: Latency=200.89ms, DataRate=22.50Mbps
+  Signal: SINR=8.63dB, RSRP=-119.55dBm
+  Resources: CPU=22%, Memory=940MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 8: [CORRECT]
+  Metrics: Latency=199.94ms, DataRate=22.20Mbps
+  Signal: SINR=9.14dB, RSRP=-121.48dBm
+  Resources: CPU=22%, Memory=918MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Override→Cloud: Poor signal (RSRP=-121dBm).
+
+Scenario 9: [CORRECT]
+  Metrics: Latency=199.93ms, DataRate=21.00Mbps
+  Signal: SINR=8.90dB, RSRP=-118.87dBm
+  Resources: CPU=21%, Memory=1007MB
+  Predicted: Cloud | Actual: Cloud
+  Confidence: 100%
+  Reasoning: ML predicted Cloud (100% confidence). Validated by threshold rules.
+
+Scenario 10: [INCORRECT]
+  Metrics: Latency=7.18ms, DataRate=22.50Mbps
+  Signal: SINR=8.44dB, RSRP=-120.61dBm
+  Resources: CPU=22%, Memory=999MB
+  Predicted: Cloud | Actual: Edge
+  Confidence: 100%
+  Reasoning: ML predicted Edge (100% confidence). Override→Cloud: Poor signal (RSRP=-121dBm).
+
+================================================================================

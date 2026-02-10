@@ -1,0 +1,64 @@
+{
+  "timestamp": "20260211_043905",
+  "algorithm": "ML + Threshold (Gradient Boosting)",
+  "paper": "Adaptive Task Scheduling in Edge-Fog-Cloud with Network Failure Resilience",
+  "training_data": {
+    "source": "edgesimpy_failure_ml_+_thresh_(gb)_no_failure",
+    "total_scenarios": 1000,
+    "layer_distribution": {
+      "Cloud": 464,
+      "Edge": 344,
+      "Fog": 192
+    }
+  },
+  "model_storage": {
+    "location": "c:\\Users\\Sahil Padole\\Videos\\AI_agent_ml_threshold\\AI_agent\\llm-rag-system-1\\network_faiss_store",
+    "files": [
+      "gradient_boosting_model.pkl",
+      "label_encoder.pkl"
+    ]
+  },
+  "ml_model": {
+    "type": "GradientBoostingClassifier",
+    "n_estimators": 100,
+    "learning_rate": 0.1,
+    "max_depth": 5,
+    "accuracy": 1.0,
+    "feature_importance": {
+      "datarate_mbps": 5.2697789405615605e-16,
+      "sinr": 1.474770702690396e-15,
+      "latency_ms": 0.999999999999994,
+      "rsrp_dbm": 2.4707438805792484e-15,
+      "cpu_demand": 2.6922899804587175e-16,
+      "memory_demand": 1.3055974170204596e-15
+    },
+    "classes": [
+      "Cloud",
+      "Edge",
+      "Fog"
+    ]
+  },
+  "threshold_rules": {
+    "edge": {
+      "latency_max_ms": 50,
+      "datarate_min_mbps": 30,
+      "cpu_max_percent": 50,
+      "description": "Low latency, high bandwidth, lightweight processing"
+    },
+    "fog": {
+      "latency_max_ms": 200,
+      "datarate_min_mbps": 15,
+      "description": "Moderate latency, balanced resources"
+    },
+    "cloud": {
+      "description": "High latency tolerance, unlimited resources"
+    },
+    "override_rules": [
+      "If latency > 150ms AND cpu > 70% \u2192 Cloud",
+      "If latency < 30ms AND datarate > 40Mbps AND cpu < 30% \u2192 Edge",
+      "If RSRP < -120dBm (poor signal) \u2192 Cloud",
+      "If SINR < 5dB (interference) AND Edge predicted \u2192 Fog",
+      "If ML confidence < 50% \u2192 Use pure threshold rules"
+    ]
+  }
+}

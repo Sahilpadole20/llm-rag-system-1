@@ -1,0 +1,23 @@
+{
+  "timestamp": "20260211_044120",
+  "total_tests": 10,
+  "correct_predictions": 9,
+  "accuracy": "90.0%",
+  "decision_method": "ML + Threshold (Paper Algorithm)",
+  "model": "GradientBoostingClassifier",
+  "deployment_distribution": {
+    "Cloud": 10
+  },
+  "latency_stats": {
+    "min": 7.181133313705439,
+    "max": 200.8871068651616,
+    "mean": 180.6183371865909,
+    "median": 199.9357604249172
+  },
+  "datarate_stats": {
+    "min": 20.6,
+    "max": 29.3,
+    "mean": 24.22,
+    "median": 22.6
+  }
+}

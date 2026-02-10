@@ -1,0 +1,11 @@
+scenario_id,datarate_mbps,latency_ms,sinr_db,rsrp_dbm,cpu_demand,memory_mb,ml_recommendation,confidence,reasoning,actual_layer,is_correct
+0,25.4,199.72095951813145,9.56192685552148,-118.44427728107036,25.0,909.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+1,20.6,200.22625329825976,9.734869277478492,-119.19389035112478,20.0,844.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+2,27.8,200.52247843451804,9.674622227982518,-117.42831598293074,27.0,863.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+3,29.3,198.29787884764784,9.5121812825575,-119.44909090088574,29.0,885.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+4,22.7,198.85742017638975,9.740237354010146,-118.5845997099465,22.0,838.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+5,28.2,200.61862056226056,10.299633940698548,-118.67712566606838,28.0,896.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+6,22.5,200.8871068651616,8.62963813439436,-119.54608368259603,22.0,940.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+7,22.2,199.9389222945608,9.14101182296594,-121.47790769296888,22.0,918.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Override→Cloud: Poor signal (RSRP=-121dBm).,Cloud,True
+8,21.0,199.9325985552736,8.899041551787791,-118.86644452865993,21.0,1007.0,Cloud,0.9999990210603875,ML predicted Cloud (100% confidence). Validated by threshold rules.,Cloud,True
+9,22.5,7.181133313705439,8.437841579399693,-120.61047052376983,22.0,999.0,Cloud,0.9999987808985479,ML predicted Edge (100% confidence). Override→Cloud: Poor signal (RSRP=-121dBm).,Edge,False

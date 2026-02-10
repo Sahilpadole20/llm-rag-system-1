@@ -1,0 +1,15 @@
+embedding_model:
+  name: "all-MiniLM-L6-v2"
+  type: "sentence-transformer"
+  dimensions: 384
+  normalization: true
+  pooling_strategy: "mean"
+
+chunking:
+  chunk_size: 512
+  chunk_overlap: 50
+
+preprocessing:
+  lower_case: true
+  remove_special_chars: true
+  stop_words_removal: true

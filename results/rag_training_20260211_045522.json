@@ -1,0 +1,38 @@
+{
+  "timestamp": "20260211_045522",
+  "pipeline_steps": {
+    "step1_data": {
+      "records": 1000
+    },
+    "step2_documents": {
+      "count": 102
+    },
+    "step3_chunks": {
+      "count": 103
+    },
+    "step4_embeddings": {
+      "shape": [
+        103,
+        102
+      ],
+      "method": "TF-IDF + SVD"
+    },
+    "step5_vector_store": {
+      "type": "FAISS IndexFlatL2",
+      "vectors": 103
+    },
+    "step6_ml_model": {
+      "accuracy": 1.0,
+      "classes": [
+        "Cloud",
+        "Edge",
+        "Fog"
+      ]
+    },
+    "step7_llm": {
+      "provider": "Groq",
+      "model": "llama-3.3-70b-versatile"
+    }
+  },
+  "storage": "c:\\Users\\Sahil Padole\\Videos\\AI_agent_ml_threshold\\AI_agent\\llm-rag-system-1\\network_faiss_store"
+}

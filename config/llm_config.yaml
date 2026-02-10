@@ -1,0 +1,23 @@
+language_model:
+  model_name: "gpt-3.5-turbo"
+  api_key: "your_api_key_here"
+  max_tokens: 150
+  temperature: 0.7
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+
+logging:
+  level: "INFO"
+  file: "logs/llm_rag_system.log"
+
+cache:
+  enabled: true
+  expiration_time: 3600  # in seconds
+
+retrieval:
+  top_k: 5
+  use_faiss: true
+
+prompt:
+  default: "You are a helpful assistant. Answer the following question based on the provided context."

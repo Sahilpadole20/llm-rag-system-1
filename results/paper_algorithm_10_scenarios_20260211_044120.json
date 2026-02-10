@@ -1,0 +1,167 @@
+{
+  "metadata": {
+    "timestamp": "20260211_044120",
+    "total_tests": 10,
+    "correct_predictions": 9,
+    "accuracy": "90.0%",
+    "decision_method": "ML + Threshold (Paper Algorithm)",
+    "model": "GradientBoostingClassifier",
+    "deployment_distribution": {
+      "Cloud": 10
+    },
+    "latency_stats": {
+      "min": 7.181133313705439,
+      "max": 200.8871068651616,
+      "mean": 180.6183371865909,
+      "median": 199.9357604249172
+    },
+    "datarate_stats": {
+      "min": 20.6,
+      "max": 29.3,
+      "mean": 24.22,
+      "median": 22.6
+    }
+  },
+  "results": [
+    {
+      "scenario_id": 0,
+      "datarate_mbps": 25.4,
+      "latency_ms": 199.72095951813145,
+      "sinr_db": 9.56192685552148,
+      "rsrp_dbm": -118.44427728107036,
+      "cpu_demand": 25.0,
+      "memory_mb": 909.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 1,
+      "datarate_mbps": 20.6,
+      "latency_ms": 200.22625329825976,
+      "sinr_db": 9.734869277478492,
+      "rsrp_dbm": -119.19389035112478,
+      "cpu_demand": 20.0,
+      "memory_mb": 844.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 2,
+      "datarate_mbps": 27.8,
+      "latency_ms": 200.52247843451804,
+      "sinr_db": 9.674622227982518,
+      "rsrp_dbm": -117.42831598293074,
+      "cpu_demand": 27.0,
+      "memory_mb": 863.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 3,
+      "datarate_mbps": 29.3,
+      "latency_ms": 198.29787884764784,
+      "sinr_db": 9.5121812825575,
+      "rsrp_dbm": -119.44909090088574,
+      "cpu_demand": 29.0,
+      "memory_mb": 885.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 4,
+      "datarate_mbps": 22.7,
+      "latency_ms": 198.85742017638975,
+      "sinr_db": 9.740237354010146,
+      "rsrp_dbm": -118.5845997099465,
+      "cpu_demand": 22.0,
+      "memory_mb": 838.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 5,
+      "datarate_mbps": 28.2,
+      "latency_ms": 200.61862056226056,
+      "sinr_db": 10.299633940698548,
+      "rsrp_dbm": -118.67712566606838,
+      "cpu_demand": 28.0,
+      "memory_mb": 896.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 6,
+      "datarate_mbps": 22.5,
+      "latency_ms": 200.8871068651616,
+      "sinr_db": 8.62963813439436,
+      "rsrp_dbm": -119.54608368259603,
+      "cpu_demand": 22.0,
+      "memory_mb": 940.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 7,
+      "datarate_mbps": 22.2,
+      "latency_ms": 199.9389222945608,
+      "sinr_db": 9.14101182296594,
+      "rsrp_dbm": -121.47790769296888,
+      "cpu_demand": 22.0,
+      "memory_mb": 918.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Override\u2192Cloud: Poor signal (RSRP=-121dBm).",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 8,
+      "datarate_mbps": 21.0,
+      "latency_ms": 199.9325985552736,
+      "sinr_db": 8.899041551787791,
+      "rsrp_dbm": -118.86644452865993,
+      "cpu_demand": 21.0,
+      "memory_mb": 1007.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999990210603875,
+      "reasoning": "ML predicted Cloud (100% confidence). Validated by threshold rules.",
+      "actual_layer": "Cloud",
+      "is_correct": true
+    },
+    {
+      "scenario_id": 9,
+      "datarate_mbps": 22.5,
+      "latency_ms": 7.181133313705439,
+      "sinr_db": 8.437841579399693,
+      "rsrp_dbm": -120.61047052376983,
+      "cpu_demand": 22.0,
+      "memory_mb": 999.0,
+      "ml_recommendation": "Cloud",
+      "confidence": 0.9999987808985479,
+      "reasoning": "ML predicted Edge (100% confidence). Override\u2192Cloud: Poor signal (RSRP=-121dBm).",
+      "actual_layer": "Edge",
+      "is_correct": false
+    }
+  ]
+}
