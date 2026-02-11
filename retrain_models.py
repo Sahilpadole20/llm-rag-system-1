@@ -31,7 +31,15 @@ print(f'ML Accuracy: {model.score(X, y_encoded):.2%}')
 print('Creating TF-IDF embeddings...')
 documents = []
 for _, row in df.iterrows():
-    doc = f"Network scenario: datarate={row['datarate']:.0f}, sinr={row['sinr']:.2f}, latency={row['latency_ms']:.2f}ms, rsrp={row['rsrp_dbm']:.2f}dBm, cpu={row['cpu_demand']}, memory={row['memory_demand']}. Assigned to {row['assigned_layer']} layer."
+    # Convert datarate to Mbps for better semantic matching
+    datarate_mbps = row['datarate'] / 1_000_000
+    
+    # Add descriptive categories for better semantic search
+    dr_cat = "low" if datarate_mbps < 10 else ("medium" if datarate_mbps < 17 else "high")
+    sinr_cat = "poor" if row['sinr'] < 10 else "good"
+    lat_cat = "low" if row['latency_ms'] < 20 else ("medium" if row['latency_ms'] < 100 else "high")
+    
+    doc = f"Network: datarate={datarate_mbps:.1f}Mbps ({dr_cat} bandwidth) sinr={row['sinr']:.1f}dB ({sinr_cat} signal) latency={row['latency_ms']:.1f}ms ({lat_cat} latency) rsrp={row['rsrp_dbm']:.1f}dBm cpu={row['cpu_demand']} mem={row['memory_demand']} → {row['assigned_layer']}"
     documents.append(doc)
 
 vectorizer = TfidfVectorizer(max_features=500, stop_words='english')

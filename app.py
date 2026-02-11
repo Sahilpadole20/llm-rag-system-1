@@ -219,25 +219,68 @@ class RAGAgent:
         return final_layer, " || ".join(reasoning)
     
     def search_similar(self, query: str, top_k: int = 3) -> list:
-        """Search vector store for similar documents."""
+        """Hybrid search: numeric filtering + semantic search."""
+        import re
+        
+        results = []
+        docs = self.models.get('metadata', {}).get('documents', [])
+        df_dict = self.models.get('metadata', {}).get('df', {})
+        
+        # Try to extract numeric values from query
+        datarate_match = re.search(r'datarate[:\s]*(\d+\.?\d*)', query.lower())
+        sinr_match = re.search(r'sinr[:\s]*(\d+\.?\d*)', query.lower())
+        latency_match = re.search(r'latency[:\s]*(\d+\.?\d*)', query.lower())
+        layer_match = re.search(r'(edge|fog|cloud)', query.lower())
+        
+        # If we have numeric values, use dataframe filtering
+        if df_dict and (datarate_match or sinr_match or latency_match or layer_match):
+            df = pd.DataFrame(df_dict)
+            df['datarate_mbps'] = df['datarate'] / 1_000_000
+            
+            # Apply filters with tolerance
+            mask = pd.Series([True] * len(df))
+            
+            if datarate_match:
+                target = float(datarate_match.group(1))
+                mask &= (df['datarate_mbps'] >= target - 2) & (df['datarate_mbps'] <= target + 2)
+            
+            if sinr_match:
+                target = float(sinr_match.group(1))
+                mask &= (df['sinr'] >= target - 2) & (df['sinr'] <= target + 2)
+            
+            if latency_match:
+                target = float(latency_match.group(1))
+                mask &= (df['latency_ms'] >= target - 30) & (df['latency_ms'] <= target + 30)
+            
+            if layer_match:
+                layer = layer_match.group(1).capitalize()
+                mask &= df['assigned_layer'] == layer
+            
+            filtered = df[mask].head(top_k)
+            
+            for idx in filtered.index:
+                if idx < len(docs):
+                    results.append({
+                        'content': docs[idx],
+                        'metadata': {'index': int(idx)},
+                        'distance': 0.0
+                    })
+            
+            if results:
+                return results
+        
+        # Fallback to semantic search
         if 'vectorizer' not in self.models or 'faiss_index' not in self.models:
             return []
         
-        # Generate query embedding
         tfidf = self.models['vectorizer'].transform([query])
         query_emb = self.models['svd'].transform(tfidf).astype('float32')
-        
-        # Search
         distances, indices = self.models['faiss_index'].search(query_emb, top_k)
-        
-        results = []
-        docs = self.models['metadata'].get('documents', [])
         
         for idx, dist in zip(indices[0], distances[0]):
             if 0 <= idx < len(docs):
-                content = docs[idx]
                 results.append({
-                    'content': content,
+                    'content': docs[idx],
                     'metadata': {'index': idx},
                     'distance': float(dist)
                 })
