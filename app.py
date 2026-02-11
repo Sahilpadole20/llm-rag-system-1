@@ -253,16 +253,34 @@ class RAGAgent:
             from groq import Groq
             client = Groq(api_key=self.api_key)
             
-            prompt = f"""You are a network deployment assistant. Based on the context, answer the query.
+            prompt = f"""You are an Edge-Fog-Cloud deployment assistant for autonomous vehicle task scheduling.
 
-CONTEXT:
+Your job is to recommend which layer to deploy a task: Edge, Fog, or Cloud.
+
+DEPLOYMENT LAYERS:
+- Edge (Servers 1-4): Low latency (<20ms), limited resources, best for real-time tasks
+- Fog (Servers 5-6): Medium latency (25ms), moderate resources, balanced workloads  
+- Cloud (Server 7): High latency (100ms), unlimited resources, compute-intensive tasks
+
+DECISION RULES:
+- Latency < 20ms AND Datarate < 16.6 Mbps → Deploy to Edge
+- Datarate 9.6-16.6 Mbps AND SINR > 10 dB → Deploy to Fog
+- Datarate ≥ 16.6 Mbps OR SINR ≤ 10 dB → Deploy to Cloud
+- Poor signal (RSRP < -120 dBm) → Deploy to Cloud
+
+SIMILAR NETWORK CONDITIONS FROM DATABASE:
 {context}
 
 {f"ML MODEL PREDICTION: {ml_prediction}" if ml_prediction else ""}
 
-QUERY: {query}
+USER QUERY: {query}
 
-Give a concise recommendation with reasoning."""
+Provide a clear response:
+1. **Recommended Layer**: State Edge, Fog, or Cloud
+2. **Reasoning**: Explain why based on network metrics
+3. **Server ID**: Suggest specific server (1-7)
+
+Be direct and specific about which layer to deploy."""
             
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
