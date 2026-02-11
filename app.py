@@ -28,10 +28,13 @@ st.set_page_config(
 # Paths
 BASE_DIR = Path(__file__).parent
 STORE_DIR = BASE_DIR / "network_faiss_store"
-DATA_DIR = BASE_DIR.parent.parent / "data"
+DATA_DIR = BASE_DIR / "data"  # Use local data folder
 
-# Set Groq API key from environment or secrets
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# Set Groq API key from environment or Streamlit secrets
+try:
+    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
+except:
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 
 # ============================================================================
