@@ -275,12 +275,12 @@ SIMILAR NETWORK CONDITIONS FROM DATABASE:
 
 USER QUERY: {query}
 
-Provide a clear response:
-1. **Recommended Layer**: State Edge, Fog, or Cloud
-2. **Reasoning**: Explain why based on network metrics
-3. **Server ID**: Suggest specific server (1-7)
+FORMAT YOUR RESPONSE AS A SINGLE PARAGRAPH:
+Write one clear paragraph that includes: the recommended layer (Edge/Fog/Cloud), the specific server ID (1-7), and the reasoning based on network metrics - all in one flowing paragraph.
 
-Be direct and specific about which layer to deploy."""
+Example: "Deploy to Edge layer on Server 2 because the latency is 6.3ms which is below the 20ms threshold, and the datarate of 3.55 Mbps is suitable for real-time processing at the edge."
+
+Be direct and concise."""
             
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
