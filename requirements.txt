@@ -6,6 +6,9 @@ scikit-learn>=1.3.0
 # Vector Store
 faiss-cpu>=1.7.0
 
+# LangChain
+langchain-core>=0.1.0
+
 # LLM
 groq>=0.4.0
 
