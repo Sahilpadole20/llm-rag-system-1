@@ -275,10 +275,10 @@ SIMILAR NETWORK CONDITIONS FROM DATABASE:
 
 USER QUERY: {query}
 
-FORMAT YOUR RESPONSE AS A SINGLE PARAGRAPH:
-Write one clear paragraph that includes: the recommended layer (Edge/Fog/Cloud), the specific server ID (1-7), and the reasoning based on network metrics - all in one flowing paragraph.
-
-Example: "Deploy to Edge layer on Server 2 because the latency is 6.3ms which is below the 20ms threshold, and the datarate of 3.55 Mbps is suitable for real-time processing at the edge."
+FORMAT YOUR RESPONSE AS BULLET POINTS:
+• **Recommended Layer**: Edge/Fog/Cloud
+• **Server ID**: 1-7
+• **Reasoning**: Why this layer based on network metrics
 
 Be direct and concise."""
             
