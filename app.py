@@ -275,12 +275,15 @@ SIMILAR NETWORK CONDITIONS FROM DATABASE:
 
 USER QUERY: {query}
 
-FORMAT YOUR RESPONSE AS BULLET POINTS:
-• **Recommended Layer**: Edge/Fog/Cloud
-• **Server ID**: 1-7
-• **Reasoning**: Why this layer based on network metrics
+IMPORTANT: Format your response EXACTLY like this with each bullet on a NEW LINE:
 
-Be direct and concise."""
+• Recommended Layer: [Edge/Fog/Cloud]
+
+• Server ID: [1-7]
+
+• Reasoning: [Why this layer based on network metrics]
+
+Each bullet MUST be on its own separate line. Be direct and concise."""
             
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
