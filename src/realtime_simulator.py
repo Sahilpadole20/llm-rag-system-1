@@ -44,6 +44,11 @@ class NetworkCondition:
     cpu_demand: int
     memory_demand: int
     
+    # Optional fields from CSV data
+    assigned_layer: Optional[str] = None
+    server_id: Optional[int] = None
+    model: Optional[str] = None
+    
     # Derived metrics
     datarate_mbps: float = field(init=False)
     signal_quality: str = field(init=False)
@@ -149,6 +154,9 @@ class RealTimeSimulator:
         self.node_health: Dict[int, NodeHealth] = {}
         self._initialize_nodes()
         
+        # Network conditions from CSV
+        self.conditions: List[NetworkCondition] = []
+        
         # History for visualization
         self.condition_history: List[NetworkCondition] = []
         self.decision_history: List[Dict] = []
@@ -184,19 +192,44 @@ class RealTimeSimulator:
             self.df = pd.read_csv(csv_path)
             self.csv_path = csv_path
             
-            # Standardize column names
+            # Standardize column names for edgesimpy format
             column_mapping = {
                 'data_rate': 'datarate',
                 'SINR': 'sinr',
                 'latency': 'latency_ms',
                 'RSRP': 'rsrp_dbm',
                 'cpu': 'cpu_demand',
-                'memory': 'memory_demand'
+                'memory': 'memory_demand',
+                'ping_ms': 'ping',  # Keep ping separate from latency_ms
             }
             
             for old, new in column_mapping.items():
                 if old in self.df.columns and new not in self.df.columns:
                     self.df.rename(columns={old: new}, inplace=True)
+            
+            # Convert datarate from bps to Mbps if values are large
+            if 'datarate' in self.df.columns and self.df['datarate'].mean() > 1e5:
+                self.df['datarate_mbps'] = self.df['datarate'] / 1e6
+            elif 'datarate' in self.df.columns:
+                self.df['datarate_mbps'] = self.df['datarate']
+            
+            # Parse existing network conditions into list
+            self.conditions = []
+            for idx, row in self.df.iterrows():
+                condition = NetworkCondition(
+                    timestamp=datetime.now(),
+                    step=int(row.get('step', idx)),
+                    datarate=row.get('datarate', 0),
+                    sinr=row.get('sinr', 0),
+                    latency_ms=row.get('latency_ms', 50),
+                    rsrp_dbm=row.get('rsrp_dbm', -100),
+                    cpu_demand=int(row.get('cpu_demand', 30)),
+                    memory_demand=int(row.get('memory_demand', 500)),
+                    assigned_layer=row.get('assigned_layer', None),
+                    server_id=int(row.get('server_id', 0)) if pd.notna(row.get('server_id')) else None,
+                    model=row.get('model', 'gradient_boosting')
+                )
+                self.conditions.append(condition)
             
             self.current_step = 0
             return True
@@ -206,7 +239,11 @@ class RealTimeSimulator:
     
     def get_next_condition(self) -> Optional[NetworkCondition]:
         """Get next network condition from CSV or generate simulated data."""
-        if self.df is not None and self.current_step < len(self.df):
+        if self.conditions and self.current_step < len(self.conditions):
+            # Use pre-parsed conditions
+            condition = self.conditions[self.current_step]
+            self.current_step += 1
+        elif self.df is not None and self.current_step < len(self.df):
             row = self.df.iloc[self.current_step]
             condition = NetworkCondition(
                 timestamp=datetime.now(),
@@ -216,7 +253,10 @@ class RealTimeSimulator:
                 latency_ms=row.get('latency_ms', random.uniform(5, 200)),
                 rsrp_dbm=row.get('rsrp_dbm', random.uniform(-120, -80)),
                 cpu_demand=int(row.get('cpu_demand', random.randint(10, 100))),
-                memory_demand=int(row.get('memory_demand', random.randint(100, 1000)))
+                memory_demand=int(row.get('memory_demand', random.randint(100, 1000))),
+                assigned_layer=row.get('assigned_layer', None),
+                server_id=int(row.get('server_id', 0)) if pd.notna(row.get('server_id')) else None,
+                model=row.get('model', None)
             )
             self.current_step += 1
         else:
