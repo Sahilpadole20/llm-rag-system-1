@@ -27,6 +27,8 @@ try:
     from src.failure_handler import FailureHandler
     from src.priority_preemption import PriorityPreemptionHandler
     from src.dynamic_requirements import DynamicRequirementsHandler
+    from src.realtime_simulator import RealTimeSimulator, NodeStatus, NetworkCondition
+    from src.auto_failover import AutoFailoverSystem, MigrationReason
     ADVANCED_FEATURES_AVAILABLE = True
 except ImportError:
     ADVANCED_FEATURES_AVAILABLE = False
@@ -444,14 +446,15 @@ def main():
     
     # Main content tabs
     if ADVANCED_FEATURES_AVAILABLE:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "🎯 Predict Deployment", 
             "🔍 Search Knowledge", 
             "💬 Ask Agent",
             "📅 Task Scheduling",
             "⚠️ Failure Handler",
             "⚡ Preemption",
-            "📊 Dynamic Changes"
+            "📊 Dynamic Changes",
+            "🎮 Real-Time Simulator"
         ])
     else:
         tab1, tab2, tab3 = st.tabs(["🎯 Predict Deployment", "🔍 Search Knowledge", "💬 Ask Agent"])
@@ -965,6 +968,201 @@ def main():
                     st.info("No changes recorded yet")
             else:
                 st.warning("No running services. Create services in the Task Scheduling tab first.")
+    
+    # =========================================================================
+    # TAB 8: REAL-TIME SIMULATOR
+    # =========================================================================
+    if ADVANCED_FEATURES_AVAILABLE:
+        with tab8:
+            st.header("🎮 Real-Time Network Simulator")
+            st.markdown("""
+            **Realistic network simulation with automatic failover.**
+            - Load CSV data from ai4mobile dataset or enter real-time values
+            - Automatic node failure detection based on thresholds
+            - Auto-migration: Edge→Fog (if Edge fails), Fog/Cloud fallback
+            - Real-time visualization of network parameters
+            """)
+            
+            # Initialize simulator in session state
+            if 'simulator' not in st.session_state:
+                st.session_state.simulator = RealTimeSimulator()
+            
+            if 'failover_system' not in st.session_state and 'service_manager' in st.session_state:
+                st.session_state.failover_system = AutoFailoverSystem(
+                    st.session_state.service_manager,
+                    st.session_state.scheduler,
+                    st.session_state.simulator
+                )
+            
+            simulator = st.session_state.simulator
+            
+            st.divider()
+            
+            # Data source selection
+            col_src1, col_src2 = st.columns(2)
+            
+            with col_src1:
+                st.subheader("📂 Load CSV Data")
+                uploaded_file = st.file_uploader(
+                    "Upload network data CSV",
+                    type=['csv'],
+                    help="CSV with columns: datarate, sinr, latency, rsrp (or similar)"
+                )
+                
+                if uploaded_file:
+                    # Save temporarily and load
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+                        tmp.write(uploaded_file.getvalue())
+                        tmp_path = tmp.name
+                    
+                    if simulator.load_csv(tmp_path):
+                        st.success(f"✅ Loaded {len(simulator.conditions)} network conditions")
+                    else:
+                        st.error("❌ Failed to load CSV")
+            
+            with col_src2:
+                st.subheader("📡 Manual Input")
+                st.markdown("Or enter network metrics manually:")
+                
+                manual_datarate = st.number_input("Data Rate (Mbps)", 1.0, 100.0, 15.0, 0.5)
+                manual_sinr = st.number_input("SINR (dB)", 0.0, 30.0, 12.0, 0.5)
+                manual_latency = st.number_input("Latency (ms)", 1.0, 500.0, 25.0, 1.0)
+                manual_rsrp = st.number_input("RSRP (dBm)", -140.0, -70.0, -100.0, 1.0)
+                
+                if st.button("⚡ Simulate Single Condition", type="primary"):
+                    condition = NetworkCondition(
+                        timestamp=datetime.now(),
+                        datarate_mbps=manual_datarate,
+                        sinr_db=manual_sinr,
+                        latency_ms=manual_latency,
+                        rsrp_dbm=manual_rsrp,
+                        cpu_demand=30.0,
+                        memory_demand=500.0
+                    )
+                    
+                    layer, reason, available = simulator.get_recommended_layer(condition)
+                    
+                    st.divider()
+                    if layer == "Edge":
+                        st.success(f"### Recommended: 🟢 {layer}")
+                    elif layer == "Fog":
+                        st.warning(f"### Recommended: 🟡 {layer}")
+                    else:
+                        st.info(f"### Recommended: 🔵 {layer}")
+                    
+                    st.markdown(f"**Reason:** {reason}")
+                    st.markdown(f"**Available Servers:** {available}")
+            
+            st.divider()
+            
+            # Node Health Dashboard
+            st.subheader("🖥️ Node Health Dashboard")
+            
+            node_cols = st.columns(7)
+            
+            for idx, (node_id, health) in enumerate(simulator.node_health.items()):
+                with node_cols[idx]:
+                    # Color based on status
+                    if health.status == NodeStatus.ACTIVE:
+                        color = "🟢"
+                    elif health.status == NodeStatus.DEGRADED:
+                        color = "🟡"
+                    elif health.status == NodeStatus.FAILED:
+                        color = "🔴"
+                    else:
+                        color = "🔵"
+                    
+                    st.markdown(f"**{color} Server {node_id}**")
+                    st.markdown(f"*{health.layer}*")
+                    st.progress(health.cpu_utilization / 100)
+                    st.caption(f"CPU: {health.cpu_utilization:.0f}%")
+                    st.progress(health.memory_utilization / 100)
+                    st.caption(f"Mem: {health.memory_utilization:.0f}%")
+                    st.caption(f"Status: {health.status.value}")
+            
+            st.divider()
+            
+            # Simulate Node Failure
+            st.subheader("💥 Simulate Node Failure")
+            col_fail1, col_fail2, col_fail3 = st.columns(3)
+            
+            with col_fail1:
+                fail_node_id = st.selectbox("Select Node to Fail", [1, 2, 3, 4, 5, 6, 7])
+            
+            with col_fail2:
+                fail_reason = st.selectbox("Failure Type", [
+                    "CPU Overload",
+                    "Memory Exhaustion", 
+                    "Network Failure",
+                    "Power Failure"
+                ])
+            
+            with col_fail3:
+                if st.button("🔴 Trigger Failure", type="secondary"):
+                    # Update node health
+                    if fail_node_id in simulator.node_health:
+                        simulator.node_health[fail_node_id].status = NodeStatus.FAILED
+                        
+                        if fail_reason == "CPU Overload":
+                            simulator.node_health[fail_node_id].cpu_utilization = 100.0
+                        elif fail_reason == "Memory Exhaustion":
+                            simulator.node_health[fail_node_id].memory_utilization = 100.0
+                        elif fail_reason == "Network Failure":
+                            simulator.node_health[fail_node_id].latency_ms = 9999
+                        
+                        st.error(f"⚡ Server {fail_node_id} FAILED due to {fail_reason}")
+                        
+                        # Trigger failover if available
+                        if 'failover_system' in st.session_state:
+                            decision = st.session_state.failover_system.check_and_migrate()
+                            st.warning(f"🔄 Failover: {decision.message}")
+                        
+                        st.rerun()
+            
+            # Recover node
+            col_rec1, col_rec2 = st.columns(2)
+            
+            with col_rec1:
+                recover_node_id = st.selectbox("Select Node to Recover", [1, 2, 3, 4, 5, 6, 7], key="recover_select")
+            
+            with col_rec2:
+                if st.button("🟢 Recover Node", type="primary"):
+                    if recover_node_id in simulator.node_health:
+                        simulator.node_health[recover_node_id].status = NodeStatus.ACTIVE
+                        simulator.node_health[recover_node_id].cpu_utilization = 30.0
+                        simulator.node_health[recover_node_id].memory_utilization = 20.0
+                        simulator.node_health[recover_node_id].latency_ms = 10.0
+                        st.success(f"✅ Server {recover_node_id} recovered!")
+                        st.rerun()
+            
+            st.divider()
+            
+            # Migration History
+            st.subheader("📜 Migration History")
+            
+            if 'failover_system' in st.session_state:
+                migration_report = st.session_state.failover_system.get_migration_report()
+                if migration_report:
+                    migration_df = pd.DataFrame(migration_report)
+                    st.dataframe(migration_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No migrations recorded yet. Trigger a node failure to see automatic migrations.")
+                
+                # Statistics
+                stats = st.session_state.failover_system.get_statistics()
+                col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+                
+                with col_stat1:
+                    st.metric("Total Migrations", stats['total_migrations'])
+                with col_stat2:
+                    st.metric("Successful", stats['successful_migrations'])
+                with col_stat3:
+                    st.metric("Success Rate", f"{stats['success_rate']:.1f}%")
+                with col_stat4:
+                    st.metric("Total Decisions", stats['total_decisions'])
+            else:
+                st.info("Create services in Task Scheduling tab first to enable automatic failover.")
     
     # Footer
     st.divider()
