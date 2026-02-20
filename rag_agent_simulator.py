@@ -45,11 +45,11 @@ CSV_PATH = DATA_DIR / "simulation_data.csv"
 if not CSV_PATH.exists():
     CSV_PATH = Path(r"c:\Users\Sahil Padole\Videos\AI_agent_ml_threshold\data\edgesimpy_failure_ml_+_thresh_(gb)_no_failure_20251223_075347_results.csv")
 
-# Get API key
+# Get API key from secrets/environment (will be overridden by sidebar input if provided)
 try:
-    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
+    DEFAULT_GROQ_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
 except:
-    GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    DEFAULT_GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # Constants
 TASK_ARRIVAL_INTERVAL = 4  # seconds
@@ -441,11 +441,24 @@ def main():
         st.error("❌ Models not loaded! Run train_paper_gb_model.py first.")
         return
     
+    # Sidebar - API Key Input
+    st.sidebar.header("🔑 API Configuration")
+    
+    groq_api_key = st.sidebar.text_input(
+        "Groq API Key",
+        value=DEFAULT_GROQ_KEY,
+        type="password",
+        help="Enter your Groq API key. Get one free at https://console.groq.com"
+    )
+    
+    # Use the key from input (or default)
+    GROQ_API_KEY = groq_api_key if groq_api_key else DEFAULT_GROQ_KEY
+    
     # Check for API key
     if not GROQ_API_KEY:
-        st.warning("⚠️ GROQ_API_KEY not set. RAG will use rule-based fallback. Set it in .streamlit/secrets.toml or environment.")
+        st.warning("⚠️ Enter Groq API Key in sidebar for RAG Agent. Get free key at https://console.groq.com")
     else:
-        st.success("✅ Groq API connected")
+        st.success("✅ Groq API key configured")
     
     # Load data
     df = load_csv()
