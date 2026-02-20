@@ -40,7 +40,13 @@ COMPLETION_TIMES = {
     "Cloud": 10  # seconds
 }
 
-CSV_PATH = Path(r"c:\Users\Sahil Padole\Videos\AI_agent_ml_threshold\data\edgesimpy_failure_ml_+_thresh_(gb)_no_failure_20251223_075347_results.csv")
+# CSV path - works both locally and on Streamlit Cloud
+BASE_DIR = Path(__file__).parent
+CSV_PATH = BASE_DIR / "data" / "simulation_data.csv"
+
+# Fallback for local development
+if not CSV_PATH.exists():
+    CSV_PATH = Path(r"c:\Users\Sahil Padole\Videos\AI_agent_ml_threshold\data\edgesimpy_failure_ml_+_thresh_(gb)_no_failure_20251223_075347_results.csv")
 
 
 class TaskStatus(Enum):

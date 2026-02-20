@@ -14,6 +14,7 @@ groq>=0.4.0
 
 # Web App
 streamlit>=1.30.0
+plotly>=5.18.0
 
 # Utilities
 python-dotenv>=1.0.0
