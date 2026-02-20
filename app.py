@@ -753,22 +753,22 @@ def main():
                     st.rerun()
             
             with col2:
-                st.subheader("🔧 Auto Recovery")
+                st.subheader("🔧 Recovery")
                 failed_servers = [s.server_id for s in servers.values() if not s.is_active]
                 
                 if failed_servers:
-                    st.warning(f"⚠️ {len(failed_servers)} server(s) offline: {failed_servers}")
+                    server_to_recover = st.selectbox(
+                        "Select server to recover",
+                        options=failed_servers,
+                        format_func=lambda x: f"Server {x} ({servers[x].layer})"
+                    )
                     
-                    if st.button("🔄 Auto Recover All Servers", type="primary"):
-                        recovered = []
-                        for server_id in failed_servers:
-                            result = st.session_state.failure_handler.recover_server(server_id)
-                            if result['success']:
-                                recovered.append(server_id)
-                        st.success(f"✅ Automatically recovered {len(recovered)} server(s): {recovered}")
+                    if st.button("✅ Recover Server", type="primary"):
+                        result = st.session_state.failure_handler.recover_server(server_to_recover)
+                        st.success(result['message'])
                         st.rerun()
                 else:
-                    st.success("✅ All servers are active - No recovery needed")
+                    st.info("All servers are active")
             
             # System Health
             st.divider()
