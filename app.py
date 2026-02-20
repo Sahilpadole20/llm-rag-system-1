@@ -17,6 +17,20 @@ from datetime import datetime
 
 import streamlit as st
 
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Import professor's 4 features
+try:
+    from src.service_manager import ServiceManager, ServiceType, Priority
+    from src.task_scheduler import TaskScheduler
+    from src.failure_handler import FailureHandler
+    from src.priority_preemption import PriorityPreemptionHandler
+    from src.dynamic_requirements import DynamicRequirementsHandler
+    ADVANCED_FEATURES_AVAILABLE = True
+except ImportError:
+    ADVANCED_FEATURES_AVAILABLE = False
+
 # Set page config
 st.set_page_config(
     page_title="RAG Deployment Agent",
@@ -429,7 +443,18 @@ def main():
         """)
     
     # Main content tabs
-    tab1, tab2, tab3 = st.tabs(["🎯 Predict Deployment", "🔍 Search Knowledge", "💬 Ask Agent"])
+    if ADVANCED_FEATURES_AVAILABLE:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+            "🎯 Predict Deployment", 
+            "🔍 Search Knowledge", 
+            "💬 Ask Agent",
+            "📅 Task Scheduling",
+            "⚠️ Failure Handler",
+            "⚡ Preemption",
+            "📊 Dynamic Changes"
+        ])
+    else:
+        tab1, tab2, tab3 = st.tabs(["🎯 Predict Deployment", "🔍 Search Knowledge", "💬 Ask Agent"])
     
     # =========================================================================
     # TAB 1: PREDICT DEPLOYMENT
@@ -592,6 +617,354 @@ def main():
                         st.text(context)
             else:
                 st.warning("Please enter a question")
+    
+    # =========================================================================
+    # TAB 4: TASK SCHEDULING (Professor's Feature #1)
+    # =========================================================================
+    if ADVANCED_FEATURES_AVAILABLE:
+        with tab4:
+            st.header("📅 Task Scheduling for XR & eMBB Services")
+            st.markdown("""
+            **Professor's Requirement #1**: Schedule different types of services:
+            - **XR Services**: 15-20 Mbps, 5-20ms latency, prefer Edge
+            - **eMBB Services**: 50-100 Mbps, 50-200ms latency, prefer Cloud/Fog
+            """)
+            
+            # Initialize session state for service manager
+            if 'service_manager' not in st.session_state:
+                st.session_state.service_manager = ServiceManager()
+                st.session_state.scheduler = TaskScheduler(st.session_state.service_manager)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Create XR Service")
+                xr_throughput = st.slider("XR Throughput (Mbps)", 15.0, 25.0, 18.0, 0.5, key="xr_tp")
+                xr_latency = st.slider("XR Max Latency (ms)", 5.0, 20.0, 10.0, 1.0, key="xr_lat")
+                xr_users = st.slider("XR Users", 2, 5, 3, key="xr_users")
+                
+                if st.button("➕ Create XR Service", type="primary"):
+                    service = st.session_state.service_manager.create_xr_service(
+                        throughput_mbps=xr_throughput,
+                        latency_ms=xr_latency,
+                        num_users=xr_users
+                    )
+                    result = st.session_state.scheduler.schedule_service(service)
+                    if result.success:
+                        st.success(f"✅ {result.message}")
+                    else:
+                        st.error(f"❌ {result.message}")
+            
+            with col2:
+                st.subheader("Create eMBB Service")
+                embb_throughput = st.slider("eMBB Throughput (Mbps)", 50.0, 100.0, 70.0, 5.0, key="embb_tp")
+                embb_latency = st.slider("eMBB Max Latency (ms)", 50.0, 200.0, 100.0, 10.0, key="embb_lat")
+                embb_users = st.slider("eMBB Users", 10, 50, 25, key="embb_users")
+                
+                if st.button("➕ Create eMBB Service", type="primary"):
+                    service = st.session_state.service_manager.create_embb_service(
+                        throughput_mbps=embb_throughput,
+                        latency_ms=embb_latency,
+                        num_users=embb_users
+                    )
+                    result = st.session_state.scheduler.schedule_service(service)
+                    if result.success:
+                        st.success(f"✅ {result.message}")
+                    else:
+                        st.error(f"❌ {result.message}")
+            
+            st.divider()
+            
+            # Server Load Display
+            st.subheader("🖥️ Server Load")
+            server_load = st.session_state.scheduler.get_server_load_report()
+            
+            load_df = pd.DataFrame(server_load)
+            if not load_df.empty:
+                # Color code by utilization
+                st.dataframe(
+                    load_df[['server_id', 'layer', 'cpu_util_%', 'mem_util_%', 'services_count', 'is_active']],
+                    use_container_width=True,
+                    hide_index=True
+                )
+            
+            # Metrics
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            metrics = st.session_state.scheduler.metrics.to_dict()
+            col_m1.metric("Total Scheduled", metrics['total_scheduled'])
+            col_m2.metric("XR Services", metrics['xr_scheduled'])
+            col_m3.metric("eMBB Services", metrics['embb_scheduled'])
+            col_m4.metric("Avg Latency", f"{metrics['average_latency_ms']:.1f} ms")
+            
+            if st.button("🔄 Reset All Services"):
+                st.session_state.service_manager.reset_all()
+                st.session_state.scheduler.reset_metrics()
+                st.rerun()
+        
+        # =========================================================================
+        # TAB 5: FAILURE HANDLER (Professor's Feature #2)
+        # =========================================================================
+        with tab5:
+            st.header("⚠️ Node Failure Handling")
+            st.markdown("""
+            **Professor's Requirement #2**: Handle node failures:
+            - Detect when Edge/Fog/Cloud nodes fail
+            - Migrate affected services to healthy servers
+            - Rebalance load after recovery
+            """)
+            
+            if 'failure_handler' not in st.session_state:
+                st.session_state.failure_handler = FailureHandler(
+                    st.session_state.service_manager,
+                    st.session_state.scheduler
+                )
+            
+            # Server status
+            st.subheader("🖥️ Server Status")
+            
+            servers = st.session_state.service_manager.servers
+            cols = st.columns(4)
+            
+            for i, (server_id, server) in enumerate(servers.items()):
+                with cols[i % 4]:
+                    if server.is_active:
+                        st.success(f"**Server {server_id}** ({server.layer})")
+                        st.caption(f"CPU: {server.cpu_utilization:.1f}%")
+                    else:
+                        st.error(f"**Server {server_id}** ({server.layer}) ❌")
+                        st.caption("OFFLINE")
+            
+            st.divider()
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("🔥 Simulate Failure")
+                server_to_fail = st.selectbox(
+                    "Select server to fail",
+                    options=[s.server_id for s in servers.values() if s.is_active],
+                    format_func=lambda x: f"Server {x} ({servers[x].layer})"
+                )
+                
+                if st.button("💥 Simulate Failure", type="primary"):
+                    event = st.session_state.failure_handler.simulate_server_failure(server_to_fail)
+                    st.warning(f"⚠️ {event.message}")
+                    st.info(f"Affected: {len(event.affected_services)} | Migrated: {len(event.migrated_services)} | Failed: {len(event.failed_migrations)}")
+                    st.rerun()
+            
+            with col2:
+                st.subheader("🔧 Recovery")
+                failed_servers = [s.server_id for s in servers.values() if not s.is_active]
+                
+                if failed_servers:
+                    server_to_recover = st.selectbox(
+                        "Select server to recover",
+                        options=failed_servers,
+                        format_func=lambda x: f"Server {x} ({servers[x].layer})"
+                    )
+                    
+                    if st.button("✅ Recover Server", type="primary"):
+                        result = st.session_state.failure_handler.recover_server(server_to_recover)
+                        st.success(result['message'])
+                        st.rerun()
+                else:
+                    st.info("All servers are active")
+            
+            # System Health
+            st.divider()
+            st.subheader("💚 System Health")
+            health = st.session_state.failure_handler.get_system_health()
+            
+            col_h1, col_h2, col_h3, col_h4 = st.columns(4)
+            col_h1.metric("Status", health['status'].upper())
+            col_h2.metric("Active Servers", f"{health['active_servers']}/{health['total_servers']}")
+            col_h3.metric("Avg CPU", f"{health['avg_cpu_utilization']:.1f}%")
+            col_h4.metric("Failure Events", health['total_failure_events'])
+        
+        # =========================================================================
+        # TAB 6: PREEMPTION (Professor's Feature #3)
+        # =========================================================================
+        with tab6:
+            st.header("⚡ Priority-Based Preemption")
+            st.markdown("""
+            **Professor's Requirement #3**: Higher priority services preemption:
+            - 80% utilization threshold triggers preemption
+            - Higher priority services preempt lower priority ones
+            - Priority: CRITICAL > HIGH > MEDIUM > LOW
+            """)
+            
+            if 'preemption_handler' not in st.session_state:
+                st.session_state.preemption_handler = PriorityPreemptionHandler(
+                    st.session_state.service_manager,
+                    st.session_state.scheduler
+                )
+            
+            st.subheader("🚨 Create High Priority Service")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                priority = st.selectbox(
+                    "Priority Level",
+                    options=["CRITICAL", "HIGH"],
+                    index=0
+                )
+                service_type = st.selectbox(
+                    "Service Type",
+                    options=["XR", "eMBB"]
+                )
+            
+            with col2:
+                hp_throughput = st.slider("Throughput (Mbps)", 10.0, 80.0, 25.0, 5.0, key="hp_tp")
+                hp_users = st.slider("Users", 5, 30, 10, key="hp_users")
+            
+            if st.button("⚡ Schedule with Preemption", type="primary"):
+                pri = Priority.CRITICAL if priority == "CRITICAL" else Priority.HIGH
+                
+                if service_type == "XR":
+                    service = st.session_state.service_manager.create_xr_service(
+                        throughput_mbps=hp_throughput,
+                        num_users=hp_users,
+                        priority=pri
+                    )
+                else:
+                    service = st.session_state.service_manager.create_embb_service(
+                        throughput_mbps=hp_throughput,
+                        num_users=hp_users,
+                        priority=pri
+                    )
+                
+                result = st.session_state.preemption_handler.try_schedule_with_preemption(service)
+                
+                if result.success:
+                    st.success(f"✅ {result.message}")
+                    if result.preempted_services:
+                        st.warning(f"⚠️ Preempted: {len(result.preempted_services)} services")
+                        st.info(f"Rescheduled: {len(result.rescheduled_services)}")
+                else:
+                    st.error(f"❌ {result.message}")
+            
+            st.divider()
+            
+            # Preemption Statistics
+            st.subheader("📊 Preemption Statistics")
+            stats = st.session_state.preemption_handler.get_preemption_statistics()
+            
+            col_s1, col_s2, col_s3 = st.columns(3)
+            col_s1.metric("Total Preemptions", stats['total_preemptions'])
+            col_s2.metric("Edge Preemptions", stats['preemptions_by_layer']['Edge'])
+            col_s3.metric("Cloud Preemptions", stats['preemptions_by_layer']['Cloud'])
+        
+        # =========================================================================
+        # TAB 7: DYNAMIC CHANGES (Professor's Feature #4)
+        # =========================================================================
+        with tab7:
+            st.header("📊 Dynamic Requirement Changes")
+            st.markdown("""
+            **Professor's Requirement #4**: Handle runtime changes:
+            - Increase/decrease in throughput requirements
+            - Changes in number of users
+            - Re-evaluate and migrate if needed
+            """)
+            
+            if 'dynamic_handler' not in st.session_state:
+                st.session_state.dynamic_handler = DynamicRequirementsHandler(
+                    st.session_state.service_manager,
+                    st.session_state.scheduler
+                )
+            
+            # Get running services
+            running_services = st.session_state.service_manager.get_running_services()
+            
+            if running_services:
+                st.subheader("📋 Running Services")
+                
+                service_options = {
+                    f"{s.service_id} ({s.service_type.value})": s.service_id 
+                    for s in running_services
+                }
+                
+                selected_service_name = st.selectbox(
+                    "Select Service to Modify",
+                    options=list(service_options.keys())
+                )
+                selected_service_id = service_options[selected_service_name]
+                selected_service = st.session_state.service_manager.get_service(selected_service_id)
+                
+                if selected_service:
+                    st.info(f"Current: {selected_service.throughput_mbps:.1f} Mbps, {selected_service.num_users} users, Server {selected_service.assigned_server}")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.subheader("📶 Throughput")
+                        new_throughput = st.slider(
+                            "New Throughput (Mbps)",
+                            5.0, 100.0, 
+                            float(selected_service.throughput_mbps),
+                            1.0,
+                            key="new_tp"
+                        )
+                        if st.button("Update Throughput"):
+                            result = st.session_state.dynamic_handler.update_throughput(
+                                selected_service_id, new_throughput
+                            )
+                            if result.success:
+                                st.success(f"✅ {result.message}")
+                            else:
+                                st.error(f"❌ {result.message}")
+                            st.rerun()
+                    
+                    with col2:
+                        st.subheader("👥 Users")
+                        new_users = st.slider(
+                            "New User Count",
+                            1, 50,
+                            selected_service.num_users,
+                            1,
+                            key="new_users"
+                        )
+                        if st.button("Update Users"):
+                            result = st.session_state.dynamic_handler.update_users(
+                                selected_service_id, new_users
+                            )
+                            if result.success:
+                                st.success(f"✅ {result.message}")
+                            else:
+                                st.error(f"❌ {result.message}")
+                            st.rerun()
+                    
+                    with col3:
+                        st.subheader("⏱️ Latency")
+                        new_latency = st.slider(
+                            "New Max Latency (ms)",
+                            5.0, 200.0,
+                            float(selected_service.latency_ms),
+                            5.0,
+                            key="new_lat"
+                        )
+                        if st.button("Update Latency"):
+                            result = st.session_state.dynamic_handler.update_latency_requirement(
+                                selected_service_id, new_latency
+                            )
+                            if result.success:
+                                st.success(f"✅ {result.message}")
+                            else:
+                                st.error(f"❌ {result.message}")
+                            st.rerun()
+                
+                st.divider()
+                
+                # Change History
+                st.subheader("📜 Change History")
+                change_report = st.session_state.dynamic_handler.get_change_report()
+                if change_report:
+                    change_df = pd.DataFrame(change_report)
+                    st.dataframe(change_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No changes recorded yet")
+            else:
+                st.warning("No running services. Create services in the Task Scheduling tab first.")
     
     # Footer
     st.divider()
