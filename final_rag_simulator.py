@@ -855,15 +855,21 @@ def main():
             
             time.sleep(actual_arrival)
         
-        # Wait for remaining tasks
-        while any(t.status != TaskStatus.COMPLETED for t in st.session_state.tasks):
+        # Wait for remaining tasks to complete
+        max_wait_iterations = 100  # Safety limit
+        iteration = 0
+        while any(t.status != TaskStatus.COMPLETED for t in st.session_state.tasks) and iteration < max_wait_iterations:
             current_time = datetime.now()
+            iteration += 1
             
+            # First: Complete any finished RUNNING tasks
             for task in st.session_state.tasks:
                 if task.status == TaskStatus.RUNNING and task.end_time and current_time >= task.end_time:
                     task.status = TaskStatus.COMPLETED
                     st.session_state.servers[task.final_server].release()
-                
+            
+            # Second: Start any WAITING tasks if server is now available
+            for task in st.session_state.tasks:
                 if task.status == TaskStatus.WAITING:
                     server = st.session_state.servers[task.final_server]
                     if server.is_available(current_time):
@@ -872,6 +878,31 @@ def main():
                         task.wait_time = (current_time - task.arrival_time).total_seconds()
                         task.status = TaskStatus.RUNNING
                         server.assign_task(task.task_id, actual_completion[task.final_layer], current_time)
+            
+            # Update queue display
+            with queue_placeholder.container():
+                waiting_tasks = [t for t in st.session_state.tasks if t.status == TaskStatus.WAITING]
+                running_tasks = [t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING]
+                
+                if waiting_tasks:
+                    st.markdown("**⏳ WAITING (Server Busy):**")
+                    for t in waiting_tasks:
+                        wait = (current_time - t.arrival_time).total_seconds()
+                        st.warning(f"Task {t.task_id}: Queued for {t.final_layer} Server {t.final_server} ({wait:.1f}s waiting)")
+                
+                if running_tasks:
+                    st.markdown("**🔄 RUNNING:**")
+                    for t in running_tasks:
+                        if t.start_time and t.end_time:
+                            elapsed = (current_time - t.start_time).total_seconds()
+                            total = (t.end_time - t.start_time).total_seconds()
+                            progress = min(elapsed / total, 1.0)
+                            remaining = max(0, total - elapsed)
+                            
+                            c1, c2, c3 = st.columns([2, 5, 1])
+                            c1.write(f"Task {t.task_id} ({t.final_layer} S{t.final_server})")
+                            c2.progress(progress)
+                            c3.write(f"{remaining:.1f}s")
             
             # Update metrics while waiting for tasks to complete
             with metrics_placeholder.container():
@@ -890,6 +921,13 @@ def main():
                 m6.metric("Total", len(st.session_state.tasks))
             
             time.sleep(0.3)
+        
+        # Force-complete any remaining tasks (safety measure)
+        for task in st.session_state.tasks:
+            if task.status != TaskStatus.COMPLETED:
+                task.status = TaskStatus.COMPLETED
+                if task.final_server in st.session_state.servers:
+                    st.session_state.servers[task.final_server].release()
         
         st.session_state.running = False
         st.balloons()
