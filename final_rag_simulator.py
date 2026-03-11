@@ -965,9 +965,10 @@ def main():
             m5.metric("🎯 RAG=EdgeSimPy", rag_ml_match)
             m6.metric("Total", len(st.session_state.tasks))
         
-        # Clear queue display
+        # Clear queue display completely
+        queue_placeholder.empty()
         with queue_placeholder.container():
-            st.success("All tasks completed!")
+            st.success("✅ All tasks completed!")
         
         st.session_state.running = False
         st.balloons()
