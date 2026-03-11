@@ -311,7 +311,14 @@ def load_test_data():
     test_path = STORE_DIR / "test_data.pkl"
     if test_path.exists():
         with open(test_path, 'rb') as f:
-            return pickle.load(f)
+            data = pickle.load(f)
+            # Ensure it's a list
+            if isinstance(data, pd.DataFrame):
+                return data.to_dict('records')
+            elif isinstance(data, list):
+                return data
+            else:
+                return []
     
     # Fallback to full CSV (last 200 rows)
     if CSV_PATH.exists():
@@ -744,7 +751,18 @@ def main():
             rag_agent = RAGAgent(groq_key, models)
             ml_verifier = MLVerifier()
             
-            task_data = test_data[:num_tasks]
+            # Ensure test_data is a list
+            if isinstance(test_data, list):
+                task_data = test_data[:num_tasks]
+            elif isinstance(test_data, pd.DataFrame):
+                task_data = test_data.head(num_tasks).to_dict('records')
+            else:
+                task_data = []
+            
+            if not task_data:
+                st.error("No test data available!")
+                st.stop()
+            
             idx = 0
             
             while idx < len(task_data) and st.session_state.running:
@@ -1081,7 +1099,10 @@ def main():
                 for svc in st.session_state.services:
                     if svc.status == TaskStatus.WAITING and svc.is_active(current_time):
                         # Get network from EdgeSimPy test data (200 rows)
-                        network = test_data[svc.service_id % len(test_data)] if test_data else {}
+                        if test_data and len(test_data) > 0:
+                            network = test_data[svc.service_id % len(test_data)].copy()
+                        else:
+                            network = {'datarate_mbps': 10.0, 'sinr': 15.0, 'latency_ms': 20.0, 'rsrp_dbm': -80.0, 'assigned_layer': 'Fog'}
                         network['edgesimpy_layer'] = network.get('assigned_layer', 'Fog')
                         svc.network = network
                         
