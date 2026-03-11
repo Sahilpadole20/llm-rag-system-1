@@ -10,7 +10,7 @@ Infrastructure:
 - Cloud: Server 7 ONLY (1 task at a time - others MUST QUEUE)
 
 Timing:
-- Task arrives every 4 seconds
+- Every 4 seconds: 1-4 tasks arrive (random batch)
 - Edge completion: 3 seconds
 - Fog completion: 6 seconds
 - Cloud completion: 10 seconds
@@ -482,7 +482,7 @@ def main():
     | **TRAIN** | 800 | RAG Knowledge Base (FAISS) |
     | **TEST** | 200 | Simulation Verification (this UI) |
     
-    > 💡 The RAG agent has NEVER seen these test rows. This is a fair evaluation!
+    > 💡 Every 4 seconds, **1-4 random tasks** arrive simultaneously!
     
     ### Decision Flow:
     | Step | Component | Role |
@@ -539,7 +539,7 @@ def main():
     
     st.sidebar.markdown(f"""
     **Timing ({speed}x speed):**
-    - Task arrival: every {actual_arrival:.1f}s
+    - Batch arrival: every {actual_arrival:.1f}s (1-4 random tasks)
     - Edge completion: {actual_completion['Edge']:.1f}s
     - Fog completion: {actual_completion['Fog']:.1f}s
     - Cloud completion: {actual_completion['Cloud']:.1f}s
@@ -672,119 +672,126 @@ def main():
                             current_time
                         )
             
-            # 3. New task arrives
-            network = st.session_state.task_data[st.session_state.idx]
-            task_id = st.session_state.idx + 1
+            # 3. Random batch of tasks arrive (1-4 per interval)
+            batch_size = random.randint(1, 4)
+            tasks_in_batch = min(batch_size, len(st.session_state.task_data) - st.session_state.idx)
             
-            # Add EdgeSimPy ground truth to network dict
-            network['edgesimpy_layer'] = network.get('csv_layer', None)
-            
-            # STEP 1: RAG Agent Decision (PRIMARY)
-            rag_layer, rag_server, rag_reasoning = rag_agent.decide(network)
-            
-            # STEP 2: EdgeSimPy Ground Truth (for comparison)
-            ml_layer, ml_confidence = ml_verifier.verify(network)
-            ml_matches = (rag_layer == ml_layer)
-            
-            # STEP 3: Agent Execution (check availability)
-            final_layer, final_server, exec_note, decision_maker = execute_decision(
-                rag_layer, rag_server,
-                st.session_state.servers,
-                network,
-                current_time
-            )
-            
-            # Display decision flow
-            with decision_placeholder.container():
-                st.markdown(f"### 🎯 Task {task_id}")
-                
-                # Network condition
-                n1, n2, n3, n4 = st.columns(4)
-                n1.metric("📶 Data Rate", f"{network['datarate_mbps']:.1f} Mbps")
-                n2.metric("📡 SINR", f"{network['sinr']:.1f} dB")
-                n3.metric("⏱️ Latency", f"{network['latency_ms']:.1f} ms")
-                n4.metric("📊 RSRP", f"{network['rsrp_dbm']:.1f} dBm")
-                
-                st.markdown("---")
-                
-                # RAG vs ML
-                d1, d2, d3 = st.columns(3)
-                
-                with d1:
-                    st.markdown("#### 🧠 RAG Agent (PRIMARY)")
-                    color = {"Edge": "success", "Fog": "warning", "Cloud": "info"}
-                    getattr(st, color.get(rag_layer, "info"))(f"**{rag_layer}** → Server {rag_server}")
-                    st.caption(rag_reasoning[:80] + "..." if len(rag_reasoning) > 80 else rag_reasoning)
-                
-                with d2:
-                    st.markdown("#### 📊 EdgeSimPy (GT)")
-                    getattr(st, color.get(ml_layer, "info"))(f"**{ml_layer}** (Ground Truth)")
-                    if ml_matches:
-                        st.success("✅ Matches RAG")
-                    else:
-                        st.warning(f"⚠️ Different from RAG")
-                
-                with d3:
-                    st.markdown("#### ✅ Final Execution")
-                    getattr(st, color.get(final_layer, "info"))(f"**{final_layer}** → Server {final_server}")
-                    st.caption(exec_note)
-                
-                st.markdown("---")
-                st.caption(f"📁 CSV Original: {network.get('csv_layer', 'N/A')} → Server {network.get('csv_server', 'N/A')}")
-            
-            # Server status
-            with server_placeholder.container():
-                for layer in ["Edge", "Fog", "Cloud"]:
-                    layer_servers = [s for s in st.session_state.servers.values() if s.layer == layer]
-                    icon = {"Edge": "🟢", "Fog": "🟡", "Cloud": "🔵"}[layer]
+            for batch_idx in range(tasks_in_batch):
+                if st.session_state.idx >= len(st.session_state.task_data):
+                    break
                     
-                    st.markdown(f"**{icon} {layer}** (max {MAX_PARALLEL_BY_LAYER[layer]} parallel)")
+                network = st.session_state.task_data[st.session_state.idx]
+                task_id = st.session_state.idx + 1
+            
+                # Add EdgeSimPy ground truth to network dict
+                network['edgesimpy_layer'] = network.get('csv_layer', None)
+            
+                # STEP 1: RAG Agent Decision (PRIMARY)
+                rag_layer, rag_server, rag_reasoning = rag_agent.decide(network)
+                
+                # STEP 2: EdgeSimPy Ground Truth (for comparison)
+                ml_layer, ml_confidence = ml_verifier.verify(network)
+                ml_matches = (rag_layer == ml_layer)
+                
+                # STEP 3: Agent Execution (check availability)
+                final_layer, final_server, exec_note, decision_maker = execute_decision(
+                    rag_layer, rag_server,
+                    st.session_state.servers,
+                    network,
+                    current_time
+                )
+                
+                # Display decision flow
+                with decision_placeholder.container():
+                    st.markdown(f"### 🎯 Task {task_id} (Batch {batch_idx + 1}/{tasks_in_batch})")
                     
-                    cols = st.columns(len(layer_servers))
-                    for i, server in enumerate(layer_servers):
-                        with cols[i]:
-                            if server.is_available(current_time):
-                                st.markdown(f"**S{server.server_id}**: 🟢 FREE")
-                            else:
-                                remaining = server.get_wait_time(current_time)
-                                st.markdown(f"**S{server.server_id}**: 🔴 BUSY")
-                                st.caption(f"Task {server.current_task} ({remaining:.1f}s)")
-                            st.caption(f"Done: {server.tasks_completed}")
-            
-            # Create and track task
-            server_obj = st.session_state.servers[final_server]
-            
-            if server_obj.is_available(current_time):
-                status = TaskStatus.RUNNING
-                start_time = current_time
-                end_time = current_time + timedelta(seconds=actual_completion[final_layer])
-                server_obj.assign_task(task_id, actual_completion[final_layer], current_time)
-            else:
-                status = TaskStatus.WAITING
-                start_time = None
-                end_time = None
-            
-            task = Task(
-                task_id=task_id,
-                arrival_time=current_time,
-                network=network,
-                rag_layer=rag_layer,
-                rag_server=rag_server,
-                rag_reasoning=rag_reasoning,
-                ml_layer=ml_layer,
-                ml_confidence=ml_confidence,
-                ml_matches_rag=ml_matches,
-                final_layer=final_layer,
-                final_server=final_server,
-                execution_note=exec_note,
-                decision_maker=decision_maker,
-                status=status,
-                start_time=start_time,
-                end_time=end_time
-            )
-            
-            st.session_state.tasks.append(task)
-            st.session_state.idx += 1
+                    # Network condition
+                    n1, n2, n3, n4 = st.columns(4)
+                    n1.metric("📶 Data Rate", f"{network['datarate_mbps']:.1f} Mbps")
+                    n2.metric("📡 SINR", f"{network['sinr']:.1f} dB")
+                    n3.metric("⏱️ Latency", f"{network['latency_ms']:.1f} ms")
+                    n4.metric("📊 RSRP", f"{network['rsrp_dbm']:.1f} dBm")
+                    
+                    st.markdown("---")
+                    
+                    # RAG vs ML
+                    d1, d2, d3 = st.columns(3)
+                    
+                    with d1:
+                        st.markdown("#### 🧠 RAG Agent (PRIMARY)")
+                        color = {"Edge": "success", "Fog": "warning", "Cloud": "info"}
+                        getattr(st, color.get(rag_layer, "info"))(f"**{rag_layer}** → Server {rag_server}")
+                        st.caption(rag_reasoning[:80] + "..." if len(rag_reasoning) > 80 else rag_reasoning)
+                    
+                    with d2:
+                        st.markdown("#### 📊 EdgeSimPy (GT)")
+                        getattr(st, color.get(ml_layer, "info"))(f"**{ml_layer}** (Ground Truth)")
+                        if ml_matches:
+                            st.success("✅ Matches RAG")
+                        else:
+                            st.warning(f"⚠️ Different from RAG")
+                    
+                    with d3:
+                        st.markdown("#### ✅ Final Execution")
+                        getattr(st, color.get(final_layer, "info"))(f"**{final_layer}** → Server {final_server}")
+                        st.caption(exec_note)
+                    
+                    st.markdown("---")
+                    st.caption(f"📁 CSV Original: {network.get('csv_layer', 'N/A')} → Server {network.get('csv_server', 'N/A')}")
+                
+                # Server status
+                with server_placeholder.container():
+                    for layer in ["Edge", "Fog", "Cloud"]:
+                        layer_servers = [s for s in st.session_state.servers.values() if s.layer == layer]
+                        icon = {"Edge": "🟢", "Fog": "🟡", "Cloud": "🔵"}[layer]
+                        
+                        st.markdown(f"**{icon} {layer}** (max {MAX_PARALLEL_BY_LAYER[layer]} parallel)")
+                        
+                        cols = st.columns(len(layer_servers))
+                        for i, server in enumerate(layer_servers):
+                            with cols[i]:
+                                if server.is_available(current_time):
+                                    st.markdown(f"**S{server.server_id}**: 🟢 FREE")
+                                else:
+                                    remaining = server.get_wait_time(current_time)
+                                    st.markdown(f"**S{server.server_id}**: 🔴 BUSY")
+                                    st.caption(f"Task {server.current_task} ({remaining:.1f}s)")
+                                st.caption(f"Done: {server.tasks_completed}")
+                
+                # Create and track task
+                server_obj = st.session_state.servers[final_server]
+                
+                if server_obj.is_available(current_time):
+                    status = TaskStatus.RUNNING
+                    start_time = current_time
+                    end_time = current_time + timedelta(seconds=actual_completion[final_layer])
+                    server_obj.assign_task(task_id, actual_completion[final_layer], current_time)
+                else:
+                    status = TaskStatus.WAITING
+                    start_time = None
+                    end_time = None
+                
+                task = Task(
+                    task_id=task_id,
+                    arrival_time=current_time,
+                    network=network,
+                    rag_layer=rag_layer,
+                    rag_server=rag_server,
+                    rag_reasoning=rag_reasoning,
+                    ml_layer=ml_layer,
+                    ml_confidence=ml_confidence,
+                    ml_matches_rag=ml_matches,
+                    final_layer=final_layer,
+                    final_server=final_server,
+                    execution_note=exec_note,
+                    decision_maker=decision_maker,
+                    status=status,
+                    start_time=start_time,
+                    end_time=end_time
+                )
+                
+                st.session_state.tasks.append(task)
+                st.session_state.idx += 1
             
             # Queue display
             with queue_placeholder.container():
