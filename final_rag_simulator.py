@@ -266,11 +266,10 @@ INFRASTRUCTURE:
 - Fog (Servers 5-6): Medium latency (~25ms), 2 parallel tasks max
 - Cloud (Server 7): High latency (~100ms), 1 task at a time (queue!)
 
-RULES:
+RULES (same as EdgeSimPy ML+Thresh):
 - Latency < 20ms AND Datarate < 16.6 Mbps → Edge
 - Datarate 9.6-16.6 Mbps AND SINR > 10 dB → Fog
 - Datarate >= 16.6 Mbps OR SINR <= 10 dB → Cloud
-- Poor signal (RSRP < -120 dBm) → Cloud
 
 SIMILAR SCENARIOS:
 {context}
@@ -304,22 +303,24 @@ LAYER: [Edge/Fog/Cloud] | SERVER: [1-7] | REASON: [brief explanation]"""
             return self._rule_based_fallback(network)
     
     def _rule_based_fallback(self, network: Dict) -> Tuple[str, int, str]:
-        """Fallback when LLM unavailable."""
+        """Fallback when LLM unavailable - SAME LOGIC AS EdgeSimPy ML+Thresh."""
         latency = network.get('latency_ms', 100)
         datarate = network.get('datarate_mbps', 10)
         sinr = network.get('sinr', 10)
-        rsrp = network.get('rsrp_dbm', -100)
         
-        if rsrp < -120:
-            return "Cloud", 7, "📡 Poor signal (RSRP < -120) → Cloud"
-        elif latency < 20 and datarate < 16.6:
+        # EdgeSimPy ML+Thresh (GB) Rules:
+        # Rule 1: latency < 20ms AND datarate < 16.6 Mbps → Edge
+        # Rule 2: 9.6 <= datarate < 16.6 AND SINR > 10 → Fog  
+        # Rule 3: datarate >= 16.6 OR SINR <= 10 → Cloud
+        
+        if latency < 20 and datarate < 16.6:
             server = random.choice([1, 2, 3, 4])
-            return "Edge", server, f"⚡ Low latency ({latency:.1f}ms) → Edge"
+            return "Edge", server, f"⚡ Low latency ({latency:.1f}ms) + datarate < 16.6 → Edge"
         elif 9.6 <= datarate < 16.6 and sinr > 10:
             server = random.choice([5, 6])
-            return "Fog", server, f"📊 Mid datarate + good SINR → Fog"
+            return "Fog", server, f"📊 Datarate 9.6-16.6 + SINR > 10 → Fog"
         else:
-            return "Cloud", 7, f"☁️ High datarate or low SINR → Cloud"
+            return "Cloud", 7, f"☁️ Datarate >= 16.6 OR SINR <= 10 → Cloud"
     
     def _default_server(self, layer: str) -> int:
         servers = {"Edge": [1, 2, 3, 4], "Fog": [5, 6], "Cloud": [7]}
