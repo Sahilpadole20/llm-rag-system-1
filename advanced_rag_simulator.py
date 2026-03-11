@@ -621,6 +621,12 @@ def main():
     
     groq_key = st.sidebar.text_input("Groq API Key", value=DEFAULT_GROQ_KEY, type="password")
     
+    # API Key confirmation indicator
+    if groq_key:
+        st.sidebar.success("✅ API Key Added")
+    else:
+        st.sidebar.warning("⚠️ Enter Groq API Key to enable LLM")
+    
     st.sidebar.divider()
     st.sidebar.header("📋 Service Configuration")
     
