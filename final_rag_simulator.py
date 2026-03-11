@@ -457,29 +457,38 @@ def execute_decision(
 # MAIN APPLICATION
 # =============================================================================
 def load_csv():
+    """Load TEST data (200 rows) that is NOT in RAG knowledge base."""
+    # First try to load the test_data.pkl (200 rows reserved for testing)
+    test_data_path = STORE_DIR / "test_data.pkl"
+    if test_data_path.exists():
+        with open(test_data_path, 'rb') as f:
+            test_data = pickle.load(f)
+            return test_data['df']  # Returns DataFrame with 200 test rows
+    
+    # Fallback to full CSV
     if CSV_PATH.exists():
         return pd.read_csv(CSV_PATH)
     return None
 
 
 def main():
-    st.title("🤖 RAG Agent Simulator (FIXED)")
+    st.title("🤖 RAG Agent Simulator (Train/Test Split)")
     
     st.markdown("""
-    ## ✅ FIXES Applied:
+    ## ✅ Train/Test Split Applied:
     
-    ### Fix 1: Proper Server Queue
-    | Layer | Servers | Max Parallel | Queue Behavior |
-    |-------|---------|--------------|----------------|
-    | Edge | 1, 2, 3, 4 | 4 tasks | Each server: 1 task |
-    | Fog | 5, 6 | 2 tasks | Each server: 1 task |
-    | **Cloud** | **7 only** | **1 task** | **Others MUST WAIT** |
+    | Dataset | Rows | Purpose |
+    |---------|------|---------|
+    | **TRAIN** | 800 | RAG Knowledge Base (FAISS) |
+    | **TEST** | 200 | Simulation Verification (this UI) |
     
-    ### Fix 2: RAG is PRIMARY Decision Maker
+    > 💡 The RAG agent has NEVER seen these test rows. This is a fair evaluation!
+    
+    ### Decision Flow:
     | Step | Component | Role |
     |------|-----------|------|
     | 1️⃣ | **RAG Agent** | 🧠 **PRIMARY** - Makes deployment decision |
-    | 2️⃣ | **EdgeSimPy** | 📊 **GROUND TRUTH** - Reference from EdgeSimPy output |
+    | 2️⃣ | **EdgeSimPy (GT)** | 📊 **GROUND TRUTH** - Compare vs actual |
     | 3️⃣ | **Agent** | ✅ **EXECUTE** - Check availability & run |
     """)
     
@@ -506,13 +515,14 @@ def main():
     else:
         st.sidebar.success("✅ Groq API configured")
     
-    # Load CSV
+    # Load TEST data (200 rows not in RAG knowledge base)
     df = load_csv()
     if df is None:
-        st.error("CSV not found!")
+        st.error("Data not found! Run train_with_split.py first.")
         return
     
-    st.success(f"✅ Loaded {len(df)} network conditions | FAISS: {models.get('faiss_index').ntotal if 'faiss_index' in models else 0} vectors")
+    faiss_count = models.get('faiss_index').ntotal if 'faiss_index' in models else 0
+    st.success(f"📊 TEST: {len(df)} tasks | 🧠 FAISS: {faiss_count} training vectors")
     
     # Initialize agents
     rag_agent = RAGAgent(models, GROQ_API_KEY)
@@ -520,7 +530,8 @@ def main():
     
     # Sidebar controls
     st.sidebar.header("🎛️ Simulation Controls")
-    num_tasks = st.sidebar.slider("Tasks to Simulate", 5, 30, 12)
+    max_tasks = min(len(df), 200)  # Max tasks from test set
+    num_tasks = st.sidebar.slider("Tasks to Simulate", 5, max_tasks, min(30, max_tasks))
     speed = st.sidebar.slider("Speed Multiplier", 1, 10, 5)
     
     actual_completion = {k: v / speed for k, v in COMPLETION_TIMES.items()}
@@ -554,7 +565,8 @@ def main():
     if col1.button("▶️ Start", type="primary"):
         st.session_state.running = True
         if not st.session_state.task_data:
-            indices = random.sample(range(len(df)), min(num_tasks, len(df)))
+            # Use sequential indices from test set (not random sampling)
+            indices = list(range(min(num_tasks, len(df))))
             st.session_state.task_data = [
                 {
                     "datarate_mbps": df.iloc[i]['datarate'] / 1e6,
