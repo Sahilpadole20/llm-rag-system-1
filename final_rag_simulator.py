@@ -983,7 +983,7 @@ def main():
         queued = sum(1 for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_QUEUED)
         
         with f1:
-            st.metric("🎯 RAG = ML Match", f"{rag_ml_match}/{total} ({rag_ml_match/total*100:.0f}%)")
+            st.metric("🎯 RAG = EdgeSimPy Match", f"{rag_ml_match}/{total} ({rag_ml_match/total*100:.0f}%)")
         
         with f2:
             st.metric("🧠 RAG Direct Execute", rag_direct)
