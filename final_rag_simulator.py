@@ -933,6 +933,42 @@ def main():
                 if task.final_server in st.session_state.servers:
                     st.session_state.servers[task.final_server].release()
         
+        # Update log table after force-complete
+        with log_placeholder.container():
+            log_data = []
+            for t in st.session_state.tasks[-10:]:
+                log_data.append({
+                    "Task": t.task_id,
+                    "🧠 RAG Decision": f"{t.rag_layer} (S{t.rag_server})",
+                    "📊 EdgeSimPy (GT)": t.ml_layer,
+                    "Match?": "✅" if t.ml_matches_rag else "❌",
+                    "Final": f"{t.final_layer} (S{t.final_server})",
+                    "Type": t.decision_maker.value,
+                    "Status": t.status.value
+                })
+            if log_data:
+                st.dataframe(pd.DataFrame(log_data), use_container_width=True, hide_index=True)
+        
+        # Update metrics after force-complete
+        with metrics_placeholder.container():
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            completed = len([t for t in st.session_state.tasks if t.status == TaskStatus.COMPLETED])
+            running = len([t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING])
+            waiting = len([t for t in st.session_state.tasks if t.status == TaskStatus.WAITING])
+            rag_primary = len([t for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_PRIMARY])
+            rag_ml_match = len([t for t in st.session_state.tasks if t.ml_matches_rag])
+            
+            m1.metric("✅ Done", completed)
+            m2.metric("🔄 Running", running)
+            m3.metric("⏳ Waiting", waiting)
+            m4.metric("🧠 RAG Primary", rag_primary)
+            m5.metric("🎯 RAG=EdgeSimPy", rag_ml_match)
+            m6.metric("Total", len(st.session_state.tasks))
+        
+        # Clear queue display
+        with queue_placeholder.container():
+            st.success("All tasks completed!")
+        
         st.session_state.running = False
         st.balloons()
         
