@@ -239,13 +239,14 @@ class RAGAgent:
     def decide(self, network: Dict) -> Tuple[str, int, str]:
         """
         PRIMARY DECISION: RAG Agent (Groq LLM + Vector Search)
+        Uses LLM for agentic decision making with threshold rules as guidance.
         Returns: (layer, server_id, reasoning)
         """
-        # Step 1: Get similar scenarios
+        # Step 1: Get similar scenarios from FAISS (EdgeSimPy output data)
         similar = self.search_similar(network)
         context = "\n".join(similar[:3]) if similar else "No similar scenarios found."
         
-        # Step 2: Query Groq LLM
+        # Step 2: Query Groq LLM for agentic decision
         if not self.api_key:
             return self._rule_based_fallback(network)
         
@@ -253,26 +254,28 @@ class RAGAgent:
             from groq import Groq
             client = Groq(api_key=self.api_key)
             
-            prompt = f"""You are an Edge-Fog-Cloud deployment agent.
+            prompt = f"""You are an Edge-Fog-Cloud deployment agent making deployment decisions.
 
-NETWORK CONDITIONS:
+CURRENT NETWORK CONDITIONS (from EdgeSimPy simulation data):
 - Data Rate: {network['datarate_mbps']:.2f} Mbps
 - SINR: {network['sinr']:.2f} dB
 - Latency: {network['latency_ms']:.2f} ms
 - RSRP: {network['rsrp_dbm']:.2f} dBm
 
 INFRASTRUCTURE:
-- Edge (Servers 1-4): Low latency (<10ms), 4 parallel tasks max
-- Fog (Servers 5-6): Medium latency (~25ms), 2 parallel tasks max
-- Cloud (Server 7): High latency (~100ms), 1 task at a time (queue!)
+- Edge (Servers 1-4): Low latency (<10ms), good for latency-critical tasks
+- Fog (Servers 5-6): Medium latency (~25ms), balanced processing
+- Cloud (Server 7): High compute power but higher latency (~100ms)
 
-RULES (same as EdgeSimPy ML+Thresh):
-- Latency < 20ms AND Datarate < 16.6 Mbps → Edge
-- Datarate 9.6-16.6 Mbps AND SINR > 10 dB → Fog
-- Datarate >= 16.6 Mbps OR SINR <= 10 dB → Cloud
+THRESHOLD RULES (from ML+Thresh algorithm):
+1. If latency < 20ms AND datarate < 16.6 Mbps → Edge
+2. If datarate between 9.6-16.6 Mbps AND SINR > 10 dB → Fog
+3. If datarate >= 16.6 Mbps OR SINR <= 10 dB → Cloud
 
-SIMILAR SCENARIOS:
+SIMILAR PAST SCENARIOS FROM FAISS:
 {context}
+
+Based on the network conditions and rules, decide the best deployment layer.
 
 RESPOND IN THIS EXACT FORMAT:
 LAYER: [Edge/Fog/Cloud] | SERVER: [1-7] | REASON: [brief explanation]"""
@@ -280,13 +283,13 @@ LAYER: [Edge/Fog/Cloud] | SERVER: [1-7] | REASON: [brief explanation]"""
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=100
+                temperature=0.1,  # Lower temperature for more deterministic output
+                max_tokens=150
             )
             
             result = response.choices[0].message.content.strip()
             
-            # Parse
+            # Parse LLM response
             layer_match = re.search(r'LAYER:\s*(Edge|Fog|Cloud)', result, re.IGNORECASE)
             server_match = re.search(r'SERVER:\s*(\d+)', result)
             reason_match = re.search(r'REASON:\s*(.+)', result, re.IGNORECASE)
@@ -295,7 +298,7 @@ LAYER: [Edge/Fog/Cloud] | SERVER: [1-7] | REASON: [brief explanation]"""
                 layer = layer_match.group(1).capitalize()
                 server = int(server_match.group(1)) if server_match else self._default_server(layer)
                 reason = reason_match.group(1) if reason_match else result
-                return layer, server, f"🧠 RAG: {reason}"
+                return layer, server, f"🧠 LLM: {reason}"
             else:
                 return self._rule_based_fallback(network)
                 
