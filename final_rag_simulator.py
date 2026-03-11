@@ -593,6 +593,11 @@ def main():
         }
         st.rerun()
     
+    # Clear cache button
+    if st.sidebar.button("🗑️ Clear Cache & Reload"):
+        st.cache_resource.clear()
+        st.rerun()
+    
     st.divider()
     
     # Metrics row - use placeholder for live updates
