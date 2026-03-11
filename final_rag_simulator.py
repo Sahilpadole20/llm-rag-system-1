@@ -638,10 +638,10 @@ def main():
     
     st.divider()
     
-    st.subheader("📋 Task Queue & Progress")
+    st.subheader("📋 Server Queue & Task Progress")
     queue_placeholder = st.empty()
     
-    st.subheader("📊 Decision Log: RAG (Primary) vs ML (Verify)")
+    st.subheader("📊 Decision Log: RAG vs EdgeSimPy (Ground Truth)")
     log_placeholder = st.empty()
     
     # ==========================================================================
