@@ -926,9 +926,16 @@ def main():
     # ADVANCED MODE
     # ==========================================================================
     else:
-        st.markdown("""
-        **Advanced Mode:** Professor's requirements
-        - ✅ Service Types: XR, eMBB, URLLC, mMTC with user counts
+        st.markdown(f"""
+        **Advanced Mode:** Professor's requirements + RAG + LLM + EdgeSimPy GT
+        
+        **Decision Pipeline:**
+        1. 🔍 **FAISS Vector Search** → Find similar scenarios from {faiss_count} training vectors
+        2. 🧠 **Groq LLM (llama-3.3-70b)** → Agentic decision using RAG context
+        3. 📊 **EdgeSimPy Ground Truth** → Compare RAG decision vs assigned_layer from CSV
+        
+        **Professor's Features:**
+        - ✅ Service Types: XR (50 users), eMBB (1000 users), URLLC, mMTC
         - ✅ Time Windows: [t1, t2] scheduling
         - ✅ Node Failure: Agentic rebalancing
         - ✅ Priority Preemption: High priority displaces low priority
@@ -1073,20 +1080,23 @@ def main():
                 # Process services
                 for svc in st.session_state.services:
                     if svc.status == TaskStatus.WAITING and svc.is_active(current_time):
-                        # Get network from test data
+                        # Get network from EdgeSimPy test data (200 rows)
                         network = test_data[svc.service_id % len(test_data)] if test_data else {}
                         network['edgesimpy_layer'] = network.get('assigned_layer', 'Fog')
                         svc.network = network
                         
-                        # ML ground truth
+                        # Get EdgeSimPy ground truth
                         svc.ml_layer, _ = ml_verifier.verify(network)
                         
-                        # Schedule
+                        # RAG + LLM Decision (using FAISS search + Groq LLM)
                         layer, server, reason, decision = scheduler.schedule_service(svc, network, current_time)
                         
+                        # Store RAG decision
                         svc.rag_layer = layer
                         svc.rag_server = server
                         svc.rag_reasoning = reason
+                        
+                        # Compare with EdgeSimPy ground truth
                         svc.ml_matches_rag = (layer == svc.ml_layer)
                         
                         if decision != DecisionMaker.RAG_QUEUED:
@@ -1127,19 +1137,26 @@ def main():
                 
                 # Update log
                 with log_placeholder.container():
-                    st.markdown("### 📊 Service Log")
+                    st.markdown("### 📊 RAG+LLM Decision Log vs EdgeSimPy Ground Truth")
                     log_data = [{
                         "ID": s.service_id,
                         "Type": s.service_type.value,
                         "Users": s.num_users,
-                        "RAG": s.rag_layer or "-",
-                        "EdgeSimPy": s.ml_layer or "-",
-                        "Match": "✅" if s.ml_matches_rag else ("❌" if s.ml_layer else "-"),
-                        "Final": s.assigned_layer or "-",
+                        "Network": f"DR={s.network.get('datarate_mbps', 0):.1f}" if s.network else "-",
+                        "🧠 RAG+LLM": f"{s.rag_layer} (S{s.rag_server})" if s.rag_layer else "-",
+                        "📊 EdgeSimPy (GT)": s.ml_layer or "-",
+                        "Match?": "✅" if s.ml_matches_rag else ("❌" if s.ml_layer else "-"),
+                        "Final": f"{s.assigned_layer} (S{s.assigned_server})" if s.assigned_layer else "-",
                         "Decision": s.decision_maker.value,
                         "Status": s.status.value
                     } for s in st.session_state.services]
                     st.dataframe(pd.DataFrame(log_data), use_container_width=True, hide_index=True)
+                    
+                    # Show RAG reasoning for latest service
+                    running_svcs = [s for s in st.session_state.services if s.rag_reasoning]
+                    if running_svcs:
+                        latest = running_svcs[-1]
+                        st.info(f"🧠 **Latest RAG Reasoning (Service {latest.service_id}):** {latest.rag_reasoning}")
                 
                 # Show events
                 with events_placeholder.container():
