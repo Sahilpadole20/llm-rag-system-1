@@ -595,23 +595,29 @@ def main():
     
     st.divider()
     
-    # Metrics row
-    m1, m2, m3, m4, m5, m6 = st.columns(6)
-    completed = len([t for t in st.session_state.tasks if t.status == TaskStatus.COMPLETED])
-    running = len([t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING])
-    waiting = len([t for t in st.session_state.tasks if t.status == TaskStatus.WAITING])
-    rag_primary = len([t for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_PRIMARY])
-    rag_ml_match = len([t for t in st.session_state.tasks if t.ml_matches_rag])
+    # Metrics row - use placeholder for live updates
+    metrics_placeholder = st.empty()
+    progress_placeholder = st.empty()
     
-    m1.metric("✅ Done", completed)
-    m2.metric("🔄 Running", running)
-    m3.metric("⏳ Waiting", waiting)
-    m4.metric("🧠 RAG Primary", rag_primary)
-    m5.metric("🎯 RAG=ML", rag_ml_match)
-    m6.metric("Total", len(st.session_state.tasks))
+    # Initial metrics display
+    with metrics_placeholder.container():
+        m1, m2, m3, m4, m5, m6 = st.columns(6)
+        completed = len([t for t in st.session_state.tasks if t.status == TaskStatus.COMPLETED])
+        running = len([t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING])
+        waiting = len([t for t in st.session_state.tasks if t.status == TaskStatus.WAITING])
+        rag_primary = len([t for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_PRIMARY])
+        rag_ml_match = len([t for t in st.session_state.tasks if t.ml_matches_rag])
+        
+        m1.metric("✅ Done", completed)
+        m2.metric("🔄 Running", running)
+        m3.metric("⏳ Waiting", waiting)
+        m4.metric("🧠 RAG Primary", rag_primary)
+        m5.metric("🎯 RAG=EdgeSimPy", rag_ml_match)
+        m6.metric("Total", len(st.session_state.tasks))
     
     if st.session_state.task_data:
-        st.progress(st.session_state.idx / len(st.session_state.task_data))
+        with progress_placeholder.container():
+            st.progress(st.session_state.idx / max(len(st.session_state.task_data), 1))
     
     st.divider()
     
@@ -820,6 +826,26 @@ def main():
                 if log_data:
                     st.dataframe(pd.DataFrame(log_data), use_container_width=True, hide_index=True)
             
+            # Update metrics in real-time
+            with metrics_placeholder.container():
+                m1, m2, m3, m4, m5, m6 = st.columns(6)
+                completed = len([t for t in st.session_state.tasks if t.status == TaskStatus.COMPLETED])
+                running = len([t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING])
+                waiting = len([t for t in st.session_state.tasks if t.status == TaskStatus.WAITING])
+                rag_primary = len([t for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_PRIMARY])
+                rag_ml_match = len([t for t in st.session_state.tasks if t.ml_matches_rag])
+                
+                m1.metric("✅ Done", completed)
+                m2.metric("🔄 Running", running)
+                m3.metric("⏳ Waiting", waiting)
+                m4.metric("🧠 RAG Primary", rag_primary)
+                m5.metric("🎯 RAG=EdgeSimPy", rag_ml_match)
+                m6.metric("Total", len(st.session_state.tasks))
+            
+            # Update progress bar
+            with progress_placeholder.container():
+                st.progress(st.session_state.idx / len(st.session_state.task_data))
+            
             time.sleep(actual_arrival)
         
         # Wait for remaining tasks
@@ -839,6 +865,22 @@ def main():
                         task.wait_time = (current_time - task.arrival_time).total_seconds()
                         task.status = TaskStatus.RUNNING
                         server.assign_task(task.task_id, actual_completion[task.final_layer], current_time)
+            
+            # Update metrics while waiting for tasks to complete
+            with metrics_placeholder.container():
+                m1, m2, m3, m4, m5, m6 = st.columns(6)
+                completed = len([t for t in st.session_state.tasks if t.status == TaskStatus.COMPLETED])
+                running = len([t for t in st.session_state.tasks if t.status == TaskStatus.RUNNING])
+                waiting = len([t for t in st.session_state.tasks if t.status == TaskStatus.WAITING])
+                rag_primary = len([t for t in st.session_state.tasks if t.decision_maker == DecisionMaker.RAG_PRIMARY])
+                rag_ml_match = len([t for t in st.session_state.tasks if t.ml_matches_rag])
+                
+                m1.metric("✅ Done", completed)
+                m2.metric("🔄 Running", running)
+                m3.metric("⏳ Waiting", waiting)
+                m4.metric("🧠 RAG Primary", rag_primary)
+                m5.metric("🎯 RAG=EdgeSimPy", rag_ml_match)
+                m6.metric("Total", len(st.session_state.tasks))
             
             time.sleep(0.3)
         
