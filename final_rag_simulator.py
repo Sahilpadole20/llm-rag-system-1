@@ -2,7 +2,7 @@
 FINAL RAG Agent Simulator (FIXED)
 ==================================
 ✅ FIX 1: Proper Server Queue - Each server processes ONE task at a time
-✅ FIX 2: RAG Agent is PRIMARY decision maker, ML Model only VERIFIES
+✅ FIX 2: RAG Agent is PRIMARY decision maker, EdgeSimPy provides GROUND TRUTH
 
 Infrastructure:
 - Edge: Servers 1-4 (4 parallel tasks max)
@@ -17,8 +17,8 @@ Timing:
 
 Decision Flow:
 1. Network condition arrives from CSV
-2. RAG Agent (Groq LLM + Vector Search) → PRIMARY DECISION
-3. ML Model (Gradient Boosting) → VERIFICATION ONLY
+2. RAG Agent (Groq LLM + Vector Search) -> PRIMARY DECISION
+3. EdgeSimPy (assigned_layer from CSV) -> GROUND TRUTH for comparison
 4. Agent checks available servers and executes
 
 Run: streamlit run final_rag_simulator.py
@@ -150,10 +150,10 @@ class Task:
     rag_server: int
     rag_reasoning: str
     
-    # ML Model Verification (SECONDARY)
-    ml_layer: str
-    ml_confidence: float
-    ml_matches_rag: bool
+    # EdgeSimPy Ground Truth (for comparison)
+    ml_layer: str  # EdgeSimPy's assigned_layer from CSV
+    ml_confidence: float  # Always 1.0 (ground truth)
+    ml_matches_rag: bool  # Does EdgeSimPy ground truth match RAG?
     
     # Agent Execution
     final_layer: str
@@ -331,10 +331,14 @@ LAYER: [Edge/Fog/Cloud] | SERVER: [1-7] | REASON: [brief explanation]"""
 
 
 # =============================================================================
-# ML MODEL (VERIFICATION ONLY)
+# ML/EDGESIMPY VERIFIER (GROUND TRUTH FROM CSV)
 # =============================================================================
 class MLVerifier:
-    """ML Model - SECONDARY verification only."""
+    """
+    Verifier using EdgeSimPy's ACTUAL output as ground truth.
+    The EdgeSimPy CSV already contains the correct 'assigned_layer' from ML+Thresh (GB).
+    We use this as ground truth to compare against RAG decisions.
+    """
     
     def __init__(self, models: dict):
         self.models = models
@@ -342,31 +346,29 @@ class MLVerifier:
     
     def verify(self, network: Dict) -> Tuple[str, float]:
         """
-        VERIFICATION: ML Model predicts layer for comparison.
+        VERIFICATION: Use EdgeSimPy's actual output as ground truth.
+        The CSV 'assigned_layer' column is the ML+Thresh (GB) decision.
         Returns: (layer, confidence)
         """
-        if 'ml_model' not in self.models:
-            return "Unknown", 0.0
+        # Use EdgeSimPy's ACTUAL assigned_layer from CSV (ground truth)
+        edgesimpy_layer = network.get('edgesimpy_layer', None)
         
-        features = [
-            network.get('datarate_mbps', 10) * 1e6,  # Convert to bps
-            network.get('sinr', 10),
-            network.get('latency_ms', 50),
-            network.get('rsrp_dbm', -100),
-            network.get('cpu_demand', 30),
-            network.get('memory_demand', 100)
-        ]
+        if edgesimpy_layer:
+            # This is the ACTUAL decision from EdgeSimPy ML+Thresh (GB)
+            return edgesimpy_layer, 1.0  # 100% confidence - it's ground truth
         
-        X = np.array([features])
+        # Fallback: If no ground truth available, use threshold rules
+        datarate = network.get('datarate_mbps', 10)
+        sinr = network.get('sinr', 10)
+        latency = network.get('latency_ms', 50)
         
-        if 'scaler' in self.models:
-            X = self.models['scaler'].transform(X)
-        
-        pred = self.models['ml_model'].predict(X)[0]
-        prob = self.models['ml_model'].predict_proba(X)[0].max()
-        layer = self.models['label_encoder'].inverse_transform([pred])[0]
-        
-        return layer, prob
+        # Same threshold rules as EdgeSimPy training labels
+        if latency < 20 and datarate < 16.6:
+            return "Edge", 0.95
+        elif 9.6 <= datarate < 16.6 and sinr > 10:
+            return "Fog", 0.90
+        else:
+            return "Cloud", 0.85
 
 
 # =============================================================================
@@ -477,7 +479,7 @@ def main():
     | Step | Component | Role |
     |------|-----------|------|
     | 1️⃣ | **RAG Agent** | 🧠 **PRIMARY** - Makes deployment decision |
-    | 2️⃣ | **ML Model** | 📊 **VERIFY** - Just compares with RAG |
+    | 2️⃣ | **EdgeSimPy** | 📊 **GROUND TRUTH** - Reference from EdgeSimPy output |
     | 3️⃣ | **Agent** | ✅ **EXECUTE** - Check availability & run |
     """)
     
@@ -656,10 +658,13 @@ def main():
             network = st.session_state.task_data[st.session_state.idx]
             task_id = st.session_state.idx + 1
             
+            # Add EdgeSimPy ground truth to network dict
+            network['edgesimpy_layer'] = network.get('csv_layer', None)
+            
             # STEP 1: RAG Agent Decision (PRIMARY)
             rag_layer, rag_server, rag_reasoning = rag_agent.decide(network)
             
-            # STEP 2: ML Model Verification (SECONDARY)
+            # STEP 2: EdgeSimPy Ground Truth (for comparison)
             ml_layer, ml_confidence = ml_verifier.verify(network)
             ml_matches = (rag_layer == ml_layer)
             
@@ -694,8 +699,8 @@ def main():
                     st.caption(rag_reasoning[:80] + "..." if len(rag_reasoning) > 80 else rag_reasoning)
                 
                 with d2:
-                    st.markdown("#### 📊 ML Model (VERIFY)")
-                    getattr(st, color.get(ml_layer, "info"))(f"**{ml_layer}** ({ml_confidence:.0%})")
+                    st.markdown("#### 📊 EdgeSimPy (GT)")
+                    getattr(st, color.get(ml_layer, "info"))(f"**{ml_layer}** (Ground Truth)")
                     if ml_matches:
                         st.success("✅ Matches RAG")
                     else:
@@ -794,7 +799,7 @@ def main():
                     log_data.append({
                         "Task": t.task_id,
                         "🧠 RAG Decision": f"{t.rag_layer} (S{t.rag_server})",
-                        "📊 ML Verify": f"{t.ml_layer} ({t.ml_confidence:.0%})",
+                        "📊 EdgeSimPy (GT)": t.ml_layer,
                         "Match?": "✅" if t.ml_matches_rag else "❌",
                         "Final": f"{t.final_layer} (S{t.final_server})",
                         "Type": t.decision_maker.value,
@@ -862,7 +867,7 @@ def main():
                 sum(1 for t in st.session_state.tasks if t.rag_layer == "Fog"),
                 sum(1 for t in st.session_state.tasks if t.rag_layer == "Cloud"),
             ],
-            "ML Verify": [
+            "EdgeSimPy (GT)": [
                 sum(1 for t in st.session_state.tasks if t.ml_layer == "Edge"),
                 sum(1 for t in st.session_state.tasks if t.ml_layer == "Fog"),
                 sum(1 for t in st.session_state.tasks if t.ml_layer == "Cloud"),
