@@ -171,9 +171,8 @@ class Task:
 # =============================================================================
 # LOAD MODELS
 # =============================================================================
-@st.cache_resource
 def load_models():
-    """Load RAG components and ML model."""
+    """Load RAG components and ML model (no cache - always fresh)."""
     models = {}
     
     # ML model
