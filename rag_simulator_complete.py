@@ -271,59 +271,105 @@ def load_models():
     """Load RAG components."""
     models = {}
     
+    # Try multiple store paths for Streamlit Cloud compatibility
+    possible_store_dirs = [
+        STORE_DIR,
+        Path("/mount/src/llm-rag-system-1/network_faiss_store"),
+        BASE_DIR / "network_faiss_store",
+    ]
+    
+    store_dir = None
+    for d in possible_store_dirs:
+        if d.exists():
+            store_dir = d
+            break
+    
+    if not store_dir:
+        st.warning("Model store directory not found!")
+        return models
+    
     # TF-IDF embedder
-    embedder_path = STORE_DIR / "tfidf_embedder.pkl"
+    embedder_path = store_dir / "tfidf_embedder.pkl"
     if embedder_path.exists():
-        with open(embedder_path, 'rb') as f:
-            data = pickle.load(f)
-            if isinstance(data, dict):
-                models['vectorizer'] = data.get('vectorizer')
-                models['svd'] = data.get('svd')
-            else:
-                models['tfidf_embedder'] = data
+        try:
+            with open(embedder_path, 'rb') as f:
+                data = pickle.load(f)
+                if isinstance(data, dict):
+                    models['vectorizer'] = data.get('vectorizer')
+                    models['svd'] = data.get('svd')
+                else:
+                    models['tfidf_embedder'] = data
+        except Exception as e:
+            st.warning(f"Could not load embedder: {e}")
     
     # FAISS index
     try:
         import faiss
-        faiss_path = STORE_DIR / "faiss.index"
+        faiss_path = store_dir / "faiss.index"
         if faiss_path.exists():
             models['faiss_index'] = faiss.read_index(str(faiss_path))
     except:
         pass
     
     # Metadata
-    meta_path = STORE_DIR / "metadata.pkl"
+    meta_path = store_dir / "metadata.pkl"
     if meta_path.exists():
-        with open(meta_path, 'rb') as f:
-            models['metadata'] = pickle.load(f)
+        try:
+            with open(meta_path, 'rb') as f:
+                models['metadata'] = pickle.load(f)
+        except:
+            pass
     
     # Label encoder
-    encoder_path = STORE_DIR / "label_encoder.pkl"
+    encoder_path = store_dir / "label_encoder.pkl"
     if encoder_path.exists():
-        with open(encoder_path, 'rb') as f:
-            models['label_encoder'] = pickle.load(f)
+        try:
+            with open(encoder_path, 'rb') as f:
+                models['label_encoder'] = pickle.load(f)
+        except:
+            pass
     
     return models
 
 
 def load_test_data():
     """Load test data (200 rows)."""
-    test_path = STORE_DIR / "test_data.pkl"
-    if test_path.exists():
-        with open(test_path, 'rb') as f:
-            data = pickle.load(f)
-            # Ensure it's a list
-            if isinstance(data, pd.DataFrame):
-                return data.to_dict('records')
-            elif isinstance(data, list):
-                return data
-            else:
-                return []
+    # Try multiple paths for test_data.pkl
+    pkl_paths_to_try = [
+        STORE_DIR / "test_data.pkl",
+        BASE_DIR / "network_faiss_store" / "test_data.pkl",
+        Path("/mount/src/llm-rag-system-1/network_faiss_store/test_data.pkl"),
+    ]
     
-    # Fallback to full CSV (last 200 rows)
-    if CSV_PATH.exists():
-        df = pd.read_csv(CSV_PATH)
-        return df.tail(200).to_dict('records')
+    for test_path in pkl_paths_to_try:
+        if test_path.exists():
+            try:
+                with open(test_path, 'rb') as f:
+                    data = pickle.load(f)
+                    # Ensure it's a list
+                    if isinstance(data, pd.DataFrame):
+                        return data.to_dict('records')
+                    elif isinstance(data, list) and len(data) > 0:
+                        return data
+            except Exception as e:
+                continue
+    
+    # Fallback to CSV in data/ directory
+    csv_paths_to_try = [
+        BASE_DIR / "data" / "simulation_data.csv",
+        STORE_DIR.parent / "data" / "simulation_data.csv",
+        DATA_DIR / "simulation_data.csv",
+        CSV_PATH,
+        Path("/mount/src/llm-rag-system-1/data/simulation_data.csv"),  # Streamlit Cloud path
+    ]
+    
+    for csv_path in csv_paths_to_try:
+        if csv_path.exists():
+            try:
+                df = pd.read_csv(csv_path)
+                return df.tail(200).to_dict('records')
+            except Exception as e:
+                continue
     
     return []
 
